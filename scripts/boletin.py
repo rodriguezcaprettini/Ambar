@@ -12,6 +12,11 @@ Salida (carpeta data/):
 Requisitos: pip install requests pandas openpyxl
 """
 import datetime as dt, io, os, sys, time
+from zoneinfo import ZoneInfo
+
+def hoy_rd():
+    """Fecha de hoy en República Dominicana (los servidores de GitHub usan UTC)."""
+    return dt.datetime.now(ZoneInfo("America/Santo_Domingo")).date()
 import pandas as pd, requests
 
 MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto",
@@ -81,10 +86,14 @@ def emisiones(xls):
     return e.apply(lambda c: c.str.strip() if c.dtype == object else c)
 
 def agregar(df, ruta, claves):
+    """Guarda los datos del día REEMPLAZANDO todo lo que ya hubiera de esa misma fecha.
+    Así, si la BVRD publica una versión corregida del boletín, se eliminan las operaciones anuladas."""
     if os.path.exists(ruta):
         viejo = pd.read_csv(ruta, dtype=str)
+        fechas = set(df["fecha"].astype(str))
+        viejo = viejo[~viejo["fecha"].isin(fechas)]
         df = pd.concat([viejo, df.astype(str)]).drop_duplicates(subset=claves, keep="last")
-    df.to_csv(ruta, index=False)
+    df.sort_values("fecha", kind="stable").to_csv(ruta, index=False)
 
 def un_dia(fecha, archivo=None):
     if archivo:
@@ -116,7 +125,7 @@ def un_dia(fecha, archivo=None):
 if __name__ == "__main__":
     a = sys.argv[1:]
     if a and a[0] == "--archivo":
-        f = dt.date.today() if len(a) < 3 else dt.date.fromisoformat(a[2]); un_dia(f, a[1])
+        f = hoy_rd() if len(a) < 3 else dt.date.fromisoformat(a[2]); un_dia(f, a[1])
     elif len(a) == 2:
         d, fin = dt.date.fromisoformat(a[0]), dt.date.fromisoformat(a[1])
         ok = 0
@@ -130,4 +139,4 @@ if __name__ == "__main__":
             d += dt.timedelta(days=1)
         print(f"Resumen: {ok} boletines procesados entre {a[0]} y {a[1]}")
     else:
-        un_dia(dt.date.fromisoformat(a[0]) if a else dt.date.today())
+        un_dia(dt.date.fromisoformat(a[0]) if a else hoy_rd())
