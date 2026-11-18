@@ -6,7 +6,7 @@ Prototipo desarrollado por JSRC, no para distribución.
 - `index.html` — la terminal. Lee los datos de `data/data.js`.
 - `scripts/boletin.py` — descarga y procesa el Boletín Consolidado diario de la BVRD.
 - `scripts/noticias.py` — recopila titulares (solo titular y enlace) de Diario Libre y Diario Financiero.
-- `scripts/build_data.py` — convierte los CSV de `data/` en `data/data.js`.
+- `scripts/build_data.py` — convierte los CSV de `data/` en `data/data.js` (archivo principal liviano) y `data/ops/AAAA-MM.js` (operaciones de cada mes, se cargan solo al consultarlas). Además filtra precios fuera de mercado (ver abajo).
 - `.github/workflows/diario.yml` — robot automático: lunes a viernes, 8:15 am (noticias) y 6:00 pm hora RD (boletín + noticias).
 - `.github/workflows/historial.yml` — carga histórica de boletines entre dos fechas (se corre a mano).
 
@@ -22,3 +22,8 @@ Revisa la pestaña **Actions**, abre la corrida en rojo y lee el paso que falló
 Mensajes comunes:
 - `sin boletín (404)` — ese día no hubo boletín (feriado) o la BVRD cambió la dirección del archivo.
 - `ERROR` en noticias — el periódico cambió su página; el resto sigue funcionando.
+
+## Precios fuera de mercado
+Una operación no se usa para el precio del día si su rendimiento se aleja más de 50 pb de la mediana de las 8 operaciones
+más cercanas del mismo título (o su precio más de 1.5% si vence en menos de un año, o más de 10% si no reporta rendimiento). Sigue contando para el volumen.
+En la pestaña Operaciones se marcan con ⚑. Umbral configurable en `scripts/build_data.py`.
