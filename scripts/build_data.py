@@ -1,7 +1,8 @@
 """
 Convierte los CSV de data/ en los archivos que lee la terminal (index.html):
-  data/data.js          -> archivo principal liviano (se carga al abrir)
-  data/ops/AAAA-MM.js   -> operaciones de cada mes (se cargan solo al consultarlas)
+  data/out/data.json          -> archivo principal liviano (la terminal lo baja al iniciar sesión)
+  data/out/ops/AAAA-MM.json   -> operaciones de cada mes (se bajan solo al consultarlas)
+Estos archivos NO van al repositorio: el robot los sube al almacenamiento privado de Supabase.
 Se ejecuta desde la raíz del repositorio. Requisitos: pip install pandas
 """
 import json, os, glob
@@ -79,15 +80,15 @@ cols = [c for c in ["mercado", "isin", "titulo", "emisor", "adm", "moneda", "tas
 
 # Operaciones por mes (archivos aparte)
 OPS_COLS = ["fecha", "id", "rueda", "titulo", "emisor", "precio", "rendimiento", "monto", "moneda", "monto_dop", "fuera"]
-os.makedirs("data/ops", exist_ok=True)
-for f in glob.glob("data/ops/*.js"): os.remove(f)
+os.makedirs("data/out/ops", exist_ok=True)
+for f in glob.glob("data/out/ops/*.json"): os.remove(f)
 meses = sorted(o.fecha.str[:7].unique())
 for m in meses:
     x = o[o.fecha.str[:7] == m][OPS_COLS].copy()
     x["id"] = x["id"].astype(str); x["titulo"] = x.titulo.astype(str).str.strip()
     rows = x.replace({np.nan: None}).values.tolist()
-    with open(f"data/ops/{m}.js", "w", encoding="utf-8") as fh:
-        fh.write(f"(window.OPS=window.OPS||{{}})[{json.dumps(m)}]=" + json.dumps({"cols": OPS_COLS, "rows": rows}, ensure_ascii=False, default=float) + ";\n")
+    with open(f"data/out/ops/{m}.json", "w", encoding="utf-8") as fh:
+        json.dump({"cols": OPS_COLS, "rows": rows}, fh, ensure_ascii=False, default=float, separators=(",", ":"))
 
 try:
     reg = json.load(open("data/descargas.json", encoding="utf-8"))
@@ -107,8 +108,7 @@ try:
     noticias = json.load(open("data/noticias.json", encoding="utf-8"))
 except FileNotFoundError:
     noticias = []
-with open("data/data.js", "w", encoding="utf-8") as fh:
-    fh.write("window.D=" + json.dumps(D, ensure_ascii=False, separators=(",", ":"), default=float) + ";\n")
-    fh.write("window.NEWS=" + json.dumps(noticias, ensure_ascii=False, separators=(",", ":")) + ";\n")
-kb = os.path.getsize("data/data.js") / 1024
-print(f"data.js: {kb:,.0f} KB · {len(fechas)} sesiones ({fechas[0]} a {fechas[-1]}) · {len(ins)} títulos · {len(S)} filas de resumen · {len(meses)} archivos mensuales · {len(noticias)} noticias · preliminares: {list(prelim) or 'ninguno'}")
+with open("data/out/data.json", "w", encoding="utf-8") as fh:
+    json.dump({"D": D, "NEWS": noticias}, fh, ensure_ascii=False, separators=(",", ":"), default=float)
+kb = os.path.getsize("data/out/data.json") / 1024
+print(f"data.json: {kb:,.0f} KB · {len(fechas)} sesiones ({fechas[0]} a {fechas[-1]}) · {len(ins)} títulos · {len(S)} filas de resumen · {len(meses)} archivos mensuales · {len(noticias)} noticias · preliminares: {list(prelim) or 'ninguno'}")

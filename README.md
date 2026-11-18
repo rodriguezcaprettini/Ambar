@@ -3,7 +3,7 @@
 Prototipo desarrollado por JSRC, no para distribución.
 
 ## Cómo funciona
-- `index.html` — la terminal. Lee los datos de `data/data.js`.
+- `index.html` — la terminal. Acceso con cuenta (Supabase Auth); el registro exige un código de invitación. Tras iniciar sesión baja `data.json` del almacenamiento privado de Supabase.
 - `scripts/boletin.py` — descarga y procesa el Boletín Consolidado diario de la BVRD.
 - `scripts/noticias.py` — recopila titulares (solo titular y enlace) de Diario Libre y Diario Financiero.
 - `scripts/build_data.py` — convierte los CSV de `data/` en `data/data.js` (archivo principal liviano) y `data/ops/AAAA-MM.js` (operaciones de cada mes, se cargan solo al consultarlas). Además filtra precios fuera de mercado (ver abajo).
@@ -30,3 +30,9 @@ Mensajes comunes:
 Una operación no se usa para el precio del día si su rendimiento se aleja más de 50 pb de la mediana de las 8 operaciones
 más cercanas del mismo título (o su precio más de 1.5% si vence en menos de un año, o más de 10% si no reporta rendimiento). Sigue contando para el volumen.
 En la pestaña Operaciones se marcan con ⚑. Umbral configurable en `scripts/build_data.py`.
+
+## Acceso y datos privados (Supabase)
+- Proyecto: https://xuspbkdedaaymngynmxe.supabase.co · bucket privado `ambar-data` (solo usuarios con sesión pueden leer).
+- `scripts/supa.py` — el robot baja su estado (`estado/*.csv|json`) al empezar y sube `data.json`, `ops/AAAA-MM.json` y el estado al terminar.
+- Secretos de GitHub necesarios: `SUPABASE_URL` y `SUPABASE_SERVICE_KEY` (clave secreta; nunca en el código).
+- Códigos de invitación: tabla `invite_codes` (ver `ambar_supabase_setup.sql`, que se ejecutó una vez en el SQL Editor). Quién usó cada código: tabla `invite_redemptions`.
