@@ -10,7 +10,7 @@ Prototipo desarrollado por JSRC, no para distribución.
 - `.github/workflows/diario.yml` — robot automático, lunes a viernes (hora RD): 8:15 am noticias; cada hora de 1:00 a 7:00 pm busca el boletín del día (se muestra como PRELIMINAR); 9:05 pm descarga definitiva. Solo guarda cambios si el archivo de la BVRD cambió.
 - `.github/workflows/historial.yml` — carga histórica de boletines entre dos fechas (se corre a mano).
 
-## Datos (carpeta `data/`)
+## Datos (en Supabase, carpeta `estado/` del bucket privado; ya no en este repositorio)
 - `operaciones.csv` — cada operación del mercado secundario.
 - `precios.csv` — precio y rendimiento por título y día (promedio ponderado por monto).
 - `emisiones.csv` — catálogo de emisiones corporativas vigentes (último boletín).
@@ -21,7 +21,7 @@ Prototipo desarrollado por JSRC, no para distribución.
 
 ## Si algo falla
 GitHub envía un correo al dueño del repositorio cuando un robot falla.
-Revisa la pestaña **Actions**, abre la corrida en rojo y lee el paso que falló.
+Revisa la pestaña **Actions**, abre la corrida en rojo y lee el paso que falló. Para trabajar localmente con los datos: `python scripts/supa.py bajar-estado` (con los secretos como variables de entorno).
 Mensajes comunes:
 - `sin boletín (404)` — ese día no hubo boletín (feriado) o la BVRD cambió la dirección del archivo.
 - `ERROR` en noticias — el periódico cambió su página; el resto sigue funcionando.
@@ -33,6 +33,7 @@ En la pestaña Operaciones se marcan con ⚑. Umbral configurable en `scripts/bu
 
 ## Acceso y datos privados (Supabase)
 - Proyecto: https://xuspbkdedaaymngynmxe.supabase.co · bucket privado `ambar-data` (solo usuarios con sesión pueden leer).
+- `scripts/calendario.py` — lee la lista `prod-data.bvrd.com.do/json/boletines.json` (la misma que usa el calendario público) y anota la primera hora en que aparece cada boletín. Si la lista falla, usa un navegador automático de respaldo.
 - `scripts/supa.py` — el robot baja su estado (`estado/*.csv|json`) al empezar y sube `data.json`, `ops/AAAA-MM.json` y el estado al terminar.
 - Secretos de GitHub necesarios: `SUPABASE_URL` y `SUPABASE_SERVICE_KEY` (clave secreta; nunca en el código).
 - Códigos de invitación: tabla `invite_codes` (ver `ambar_supabase_setup.sql`, que se ejecutó una vez en el SQL Editor). Quién usó cada código: tabla `invite_redemptions`.

@@ -1,17 +1,20 @@
 """
-Revisa la página pública de boletines de la BVRD (https://boletines.bvrd.com.do/) con un navegador
-automático y anota la PRIMERA hora (RD) en que aparece cada boletín en la página.
-El calendario se arma con JavaScript, por eso se abre con un navegador real (Chromium sin pantalla).
+Revisa si cada boletín ya aparece en la página pública de la BVRD (https://boletines.bvrd.com.do/) y anota
+la PRIMERA hora (RD) en que aparece. El calendario de esa página se arma con la lista
+https://prod-data.bvrd.com.do/json/boletines.json, así que se lee esa lista directamente (rápido).
+Si la lista falla, se usa como respaldo un navegador automático (python scripts/calendario.py --navegador).
 
 Guarda:
   data/publicacion.json  -> {fecha: {"en_servidor": hora, "en_pagina": hora}}
   data/calendario_red.txt -> direcciones que consulta el calendario (para diagnóstico)
-Solo escribe los archivos si hay algo nuevo. Requisitos: pip install playwright && playwright install chromium
+Solo escribe los archivos si hay algo nuevo. Requisitos: pip install requests (y playwright solo para el respaldo con --navegador)
 Se ejecuta desde la raíz del repositorio.
 """
 import datetime as dt, json, os, re, sys
 from zoneinfo import ZoneInfo
-from playwright.sync_api import sync_playwright
+import requests
+
+LISTA = os.environ.get("CALENDARIO_LISTA", "https://prod-data.bvrd.com.do/json/boletines.json")
 
 RD = ZoneInfo("America/Santo_Domingo")
 URL = os.environ.get("CALENDARIO_URL", "https://boletines.bvrd.com.do/")
@@ -37,38 +40,48 @@ def main():
     if not vigilar:
         print("Nada pendiente."); return
 
-    textos, red = [], set()
-    with sync_playwright() as p:
-        b = p.chromium.launch(args=["--disable-blink-features=AutomationControlled"])
-        ctx = b.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-            locale="es-DO", timezone_id="America/Santo_Domingo", viewport={"width": 1366, "height": 900})
-        ctx.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-        pg = ctx.new_page()
-        fallas = []
-        pg.on("requestfailed", lambda r: fallas.append(f"FALLÓ {r.url} {r.failure}"))
-        def resp(r):
-            u = r.url
-            if any(u.endswith(x) for x in (".png", ".jpg", ".svg", ".woff", ".woff2", ".css", ".ico")): return
-            red.add(u.split("?")[0])
-            try:
-                if "json" in (r.headers.get("content-type") or "") or "api" in u.lower():
-                    textos.append(r.text())
-            except Exception:
-                pass
-        pg.on("response", resp)
-        estado = pg.goto(URL, wait_until="networkidle", timeout=90_000)
-        pg.wait_for_timeout(6000)
-        html = pg.content(); textos.append(html)
-        texto_visible = pg.inner_text("body") if pg.query_selector("body") else ""
-        textos += [a for a in pg.eval_on_selector_all("a[href]", "els => els.map(e => e.href + ' ' + e.textContent)")]
-        b.close()
+    textos, red, fallas, estado, html, texto_visible = [], set(), [], None, "", ""
+    usar_nav = "--navegador" in sys.argv
+    if not usar_nav:
+        try:
+            r = requests.get(LISTA, timeout=60, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131.0 Safari/537.36",
+                                                         "Referer": "https://boletines.bvrd.com.do/"})
+            r.raise_for_status(); r.json()
+            textos.append(r.text); red.add(LISTA); html = r.text; texto_visible = "(lista JSON)"
+            class E: status = r.status_code
+            estado = E()
+        except Exception as e:
+            print(f"No se pudo leer la lista JSON ({e}); hace falta el navegador.", file=sys.stderr)
+            sys.exit(3)  # el robot instala el navegador y vuelve a correr con --navegador
+    else:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            b = p.chromium.launch(args=["--disable-blink-features=AutomationControlled"])
+            ctx = b.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                locale="es-DO", timezone_id="America/Santo_Domingo", viewport={"width": 1366, "height": 900})
+            ctx.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+            pg = ctx.new_page()
+            pg.on("requestfailed", lambda r: fallas.append(f"FALLÓ {r.url} {r.failure}"))
+            def resp(r):
+                u = r.url
+                if any(u.endswith(x) for x in (".png", ".jpg", ".svg", ".woff", ".woff2", ".css", ".ico")): return
+                red.add(u.split("?")[0])
+                try:
+                    if "json" in (r.headers.get("content-type") or "") or u.endswith(".json"): textos.append(r.text())
+                except Exception: pass
+            pg.on("response", resp)
+            estado = pg.goto(URL, wait_until="networkidle", timeout=90_000)
+            pg.wait_for_timeout(6000)
+            html = pg.content(); textos.append(html)
+            texto_visible = pg.inner_text("body") if pg.query_selector("body") else ""
+            b.close()
     todo = "\n".join(textos)
     todo_dec = todo.replace("+", " ").replace("%20", " ")
 
     cambios = False
     for d in vigilar:
-        k = d.isoformat(); visto = any(x in todo or x in todo_dec for x in patrones(d)[:1])
+        k = d.isoformat(); visto = any(x in todo or x in todo_dec for x in patrones(d))
         reg = pub.setdefault(k, {})
         if desc.get(k, {}).get("primera_vez") and reg.get("en_servidor") != desc[k]["primera_vez"]:
             reg["en_servidor"] = desc[k]["primera_vez"]; cambios = True
@@ -85,7 +98,7 @@ def main():
     nuevo = (f"Estado HTTP: {estado.status if estado else '-'}\n\n# Direcciones consultadas\n" + "\n".join(sorted(red))
              + "\n\n# Peticiones fallidas\n" + "\n".join(sorted(set(fallas)))
              + "\n\n# Texto visible (primeros 1500 caracteres)\n" + texto_visible[:1500]
-             + "\n\n# HTML (primeros 3000 caracteres)\n" + html[:3000] + "\n")
+             + "\n\n# Contenido recibido (primeros 3000 caracteres)\n" + html[:3000] + "\n")
     try:
         viejo = open("data/calendario_red.txt", encoding="utf-8").read()
     except FileNotFoundError:
@@ -94,8 +107,8 @@ def main():
         open("data/calendario_red.txt", "w", encoding="utf-8").write(nuevo)
     print(f"Estado HTTP {estado.status if estado else '-'} · direcciones consultadas: {len(red)} · peticiones fallidas: {len(set(fallas))} · textos revisados: {len(textos)} ({len(todo):,} caracteres)")
     print("Texto visible:", re.sub(r"\s+", " ", texto_visible)[:300])
-    if len(todo) < 2000:
-        print("AVISO: la página devolvió muy poco contenido; puede que el calendario no haya cargado.", file=sys.stderr)
+    if len(todo) < 500:
+        print("AVISO: se recibió muy poco contenido; puede que la lista o el calendario no hayan cargado.", file=sys.stderr)
 
 if __name__ == "__main__":
     main()

@@ -12,7 +12,7 @@ on:
         required: true
         default: "2026-11-05"
 permissions:
-  contents: write
+  contents: read
 concurrency: datos
 jobs:
   historial:
@@ -34,10 +34,3 @@ jobs:
         run: python scripts/build_data.py
       - name: Subir a Supabase (almacenamiento privado)
         run: python scripts/supa.py subir
-      - name: Guardar cambios
-        run: |
-          git config user.name "ambar-bot"
-          git config user.email "ambar-bot@users.noreply.github.com"
-          git add data
-          git commit -m "Historial ${{ inputs.desde }} a ${{ inputs.hasta }}" || echo "Sin cambios"
-          git push

@@ -7,7 +7,7 @@ on:
     - cron: "5 1 * * 2-6"     # 9:05 pm hora RD: descarga definitiva del boletín del día
   workflow_dispatch: {}       # botón "Run workflow" para correrlo a mano
 permissions:
-  contents: write
+  contents: read            # el robot ya no escribe en el repositorio: los datos viven en Supabase
 concurrency: datos            # evita que dos robots escriban a la vez
 jobs:
   actualizar:
@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with: { python-version: "3.12" }
-      - run: pip install requests pandas openpyxl beautifulsoup4 playwright
+      - run: pip install requests pandas openpyxl beautifulsoup4
       - name: Traer estado desde Supabase
         run: python scripts/supa.py bajar-estado
       - name: Boletín BVRD del día (servidor)
@@ -28,18 +28,15 @@ jobs:
       - name: ¿Ya aparece en la página web de la BVRD?
         continue-on-error: true   # si la página falla, el resto del robot sigue
         run: |
-          python -m playwright install --with-deps chromium > /dev/null
-          python scripts/calendario.py
+          python scripts/calendario.py || {
+            [ $? -eq 3 ] || exit 1
+            echo "La lista JSON falló: se usa el navegador de respaldo"
+            pip install playwright > /dev/null && python -m playwright install --with-deps chromium > /dev/null
+            python scripts/calendario.py --navegador
+          }
       - name: Noticias
         run: python scripts/noticias.py
       - name: Preparar datos de la terminal
         run: python scripts/build_data.py
       - name: Subir a Supabase (almacenamiento privado)
         run: python scripts/supa.py subir
-      - name: Guardar cambios
-        run: |
-          git config user.name "ambar-bot"
-          git config user.email "ambar-bot@users.noreply.github.com"
-          git add data
-          git commit -m "Datos $(date -u +%F)" || echo "Sin cambios"
-          git push
