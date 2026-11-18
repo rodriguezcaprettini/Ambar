@@ -425,7 +425,7 @@ async function enter(){if(STARTED||MODE=="rc")return;const{data:{session}}=await
  const{data,error}=await sb.storage.from("ambar-data").download("data.json");
  if(error||!data){STARTED=false;$("go").disabled=false;say(tr("Tu sesión es válida, pero no se pudieron cargar los datos. Intenta más tarde."));return}
  const j=JSON.parse(await data.text());window.D=j.D;window.NEWS=j.NEWS||[];
- $("login").style.display="none";$("app").hidden=false;$("who").textContent=session.user.email;
+ $("login").style.setProperty("display","none","important");$("app").hidden=false;$("who").textContent=session.user.email;
  const s=document.createElement("script");s.textContent=$("appcode").textContent;document.body.appendChild(s);tAll()}
 $("logout").onclick=async()=>{await sb.auth.signOut();location.hash="";location.reload()};
 sb.auth.onAuthStateChange((ev,ses)=>{if(ev=="PASSWORD_RECOVERY"){setMode("rc");return}if(ses&&(ev=="SIGNED_IN"||ev=="INITIAL_SESSION"))setTimeout(enter,0)});
