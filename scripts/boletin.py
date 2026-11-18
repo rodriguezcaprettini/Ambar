@@ -11,7 +11,7 @@ Salida (carpeta data/):
   emisiones.csv    -> catálogo de emisiones vigentes (última foto)
 Requisitos: pip install requests pandas openpyxl
 """
-import datetime as dt, io, os, sys, time
+import datetime as dt, hashlib, io, json, os, sys, time
 from zoneinfo import ZoneInfo
 
 def hoy_rd():
@@ -95,9 +95,28 @@ def agregar(df, ruta, claves):
         df = pd.concat([viejo, df.astype(str)]).drop_duplicates(subset=claves, keep="last")
     df.sort_values("fecha", kind="stable").to_csv(ruta, index=False)
 
+RD = ZoneInfo("America/Santo_Domingo")
+HORA_FINAL = 21  # a partir de las 9:00 pm hora RD el boletín del día se considera definitivo
+
+def leer_registro():
+    try:
+        return json.load(open("data/descargas.json", encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
+
+def guardar_registro(reg):
+    json.dump(dict(sorted(reg.items())), open("data/descargas.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+
+def es_final(fecha):
+    """Un boletín es definitivo si se descarga a partir de las 9 pm del mismo día o cualquier día posterior."""
+    ahora = dt.datetime.now(RD)
+    return fecha < ahora.date() or ahora.hour >= HORA_FINAL
+
 def un_dia(fecha, archivo=None):
+    reg = leer_registro(); k = fecha.isoformat(); ahora = dt.datetime.now(RD).strftime("%Y-%m-%d %H:%M")
     if archivo:
         xls = archivo
+        contenido = open(archivo, "rb").read()
     else:
         r = None
         for u in urls(fecha):
@@ -107,6 +126,19 @@ def un_dia(fecha, archivo=None):
         else:
             print(f"{fecha}: sin boletín ({r.status_code if r is not None else '-'}) {urls(fecha)[0]}"); return False
         xls = io.BytesIO(r.content)
+        contenido = r.content
+    sha = hashlib.sha256(contenido).hexdigest()[:16]
+    previo = reg.get(k, {})
+    final = True if archivo else es_final(fecha)
+    if previo.get("sha") == sha:  # mismo archivo que la última vez: no se reprocesa
+        if final and not previo.get("final"):
+            previo.update(final=True, confirmado=ahora); reg[k] = previo; guardar_registro(reg)
+            print(f"{fecha}: sin cambios desde {previo['ultima']}; ahora se marca como definitivo")
+        else:
+            print(f"{fecha}: sin cambios desde {previo.get('ultima')}")
+        return True
+    reg[k] = {"primera_vez": previo.get("primera_vez", ahora), "ultima": ahora, "sha": sha, "final": final,
+              "versiones": previo.get("versiones", 0) + 1}
     ops, precios = procesar(xls, fecha)
     os.makedirs("data", exist_ok=True)
     if len(ops):
@@ -119,7 +151,9 @@ def un_dia(fecha, archivo=None):
     if fecha.isoformat() >= ultima:  # el catálogo solo se reemplaza con un boletín más nuevo
         emisiones(xls).to_csv("data/emisiones.csv", index=False)
         open("data/emisiones_fecha.txt", "w").write(fecha.isoformat())
-    print(f"{fecha}: {len(ops)} operaciones, {len(precios)} títulos con precio")
+    guardar_registro(reg)
+    estado = "definitivo" if final else "PRELIMINAR"
+    print(f"{fecha}: {len(ops)} operaciones, {len(precios)} títulos con precio ({estado}, versión {reg[k]['versiones']})")
     return True
 
 if __name__ == "__main__":
@@ -138,5 +172,12 @@ if __name__ == "__main__":
                 time.sleep(2)  # pausa para no sobrecargar el servidor de la BVRD
             d += dt.timedelta(days=1)
         print(f"Resumen: {ok} boletines procesados entre {a[0]} y {a[1]}")
+    elif a:
+        un_dia(dt.date.fromisoformat(a[0]))
     else:
-        un_dia(dt.date.fromisoformat(a[0]) if a else hoy_rd())
+        # Días anteriores que quedaron preliminares (p. ej., si GitHub se saltó la corrida de las 9 pm)
+        for k, v in leer_registro().items():
+            if not v.get("final", True) and dt.date.fromisoformat(k) < hoy_rd():
+                un_dia(dt.date.fromisoformat(k))
+        if hoy_rd().weekday() < 5:
+            un_dia(hoy_rd())

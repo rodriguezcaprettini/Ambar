@@ -89,7 +89,13 @@ for m in meses:
     with open(f"data/ops/{m}.js", "w", encoding="utf-8") as fh:
         fh.write(f"(window.OPS=window.OPS||{{}})[{json.dumps(m)}]=" + json.dumps({"cols": OPS_COLS, "rows": rows}, ensure_ascii=False, default=float) + ";\n")
 
-D = {"fecha": fechas[-1], "fechas": fechas, "fx": fx, "ruedas": ruedas, "meses": meses, "ins": ins, "s": S,
+try:
+    reg = json.load(open("data/descargas.json", encoding="utf-8"))
+except FileNotFoundError:
+    reg = {}
+prelim = {d: v.get("primera_vez") for d, v in reg.items() if d in FI and not v.get("final", True)}
+
+D = {"prelim": prelim, "fecha": fechas[-1], "fechas": fechas, "fx": fx, "ruedas": ruedas, "meses": meses, "ins": ins, "s": S,
      "cat": cat[cols].replace({np.nan: None}).to_dict("records")}
 try:
     noticias = json.load(open("data/noticias.json", encoding="utf-8"))
@@ -99,4 +105,4 @@ with open("data/data.js", "w", encoding="utf-8") as fh:
     fh.write("window.D=" + json.dumps(D, ensure_ascii=False, separators=(",", ":"), default=float) + ";\n")
     fh.write("window.NEWS=" + json.dumps(noticias, ensure_ascii=False, separators=(",", ":")) + ";\n")
 kb = os.path.getsize("data/data.js") / 1024
-print(f"data.js: {kb:,.0f} KB · {len(fechas)} sesiones ({fechas[0]} a {fechas[-1]}) · {len(ins)} títulos · {len(S)} filas de resumen · {len(meses)} archivos mensuales · {len(noticias)} noticias")
+print(f"data.js: {kb:,.0f} KB · {len(fechas)} sesiones ({fechas[0]} a {fechas[-1]}) · {len(ins)} títulos · {len(S)} filas de resumen · {len(meses)} archivos mensuales · {len(noticias)} noticias · preliminares: {list(prelim) or 'ninguno'}")
