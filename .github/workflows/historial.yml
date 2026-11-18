@@ -1,0 +1,36 @@
+# Carga histórica: descarga todos los boletines entre dos fechas. Se corre a mano, una vez.
+name: Cargar historial
+on:
+  workflow_dispatch:
+    inputs:
+      desde:
+        description: "Fecha inicial (AAAA-MM-DD)"
+        required: true
+        default: "2026-01-02"
+      hasta:
+        description: "Fecha final (AAAA-MM-DD)"
+        required: true
+        default: "2026-11-05"
+permissions:
+  contents: write
+concurrency: datos
+jobs:
+  historial:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install requests pandas openpyxl
+      - name: Descargar boletines
+        run: python scripts/boletin.py ${{ inputs.desde }} ${{ inputs.hasta }}
+      - name: Preparar datos de la terminal
+        run: python scripts/build_data.py
+      - name: Guardar cambios
+        run: |
+          git config user.name "ambar-bot"
+          git config user.email "ambar-bot@users.noreply.github.com"
+          git add data
+          git commit -m "Historial ${{ inputs.desde }} a ${{ inputs.hasta }}" || echo "Sin cambios"
+          git push
