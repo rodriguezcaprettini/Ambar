@@ -99,6 +99,27 @@ td{font-variant-numeric:tabular-nums}
 .loglang{top:50%!important;transform:translateY(-50%);right:6vw!important}
 .loglang .lang{border-color:#ffffff40!important}.loglang .lang button{background:transparent!important;color:#b9c4d4!important}.loglang .lang button.on{background:#e3b35f!important;color:#14233b!important}
 @media(max-width:800px){#login .hero{padding:20px!important;justify-content:flex-start!important}#login .hero .wm{font-size:32px}#login .hero .lock svg{width:46px;height:46px}.hero .slogan{font-size:9px!important}.loglang{right:16px!important}}
+
+/* ===== Ajuste: el inicio de sesión cabe completo en la pantalla de una laptop ===== */
+#login{height:100vh;height:100dvh;min-height:0!important;overflow:hidden}
+#login .hero{display:grid!important;grid-template-columns:1fr auto 1fr;align-items:center;padding:12px 4vw!important}
+#login .hero .lock{grid-column:2;gap:14px}
+#login .hero .lock svg{width:50px;height:50px}
+#login .hero .wm{font-size:34px;letter-spacing:4px}
+#login .hero .slogan{font-size:9.5px!important;margin-top:6px!important}
+.loglang{position:static!important;transform:none!important;grid-column:3;justify-self:end;align-self:center;grid-row:1}#login .hero .lock{grid-row:1}#login .hero{min-height:0!important;height:auto!important}
+#login .form{padding:12px 20px!important;min-height:0}
+#login .form>div{padding:22px 28px!important;max-width:380px}
+.form .tabs{margin-bottom:14px!important}
+.form h2,#fh{font-size:23px!important;margin-bottom:2px!important}
+.form label{margin:12px 0 5px!important}
+.form input{padding:9px 11px!important;font-size:14px!important}
+.form button#go{margin-top:16px!important;padding:10px!important}
+.form .note{margin:10px 0 0!important}
+.lfoot{padding:10px 4vw!important}.lfoot p{font-size:11px!important;line-height:1.5!important;max-width:980px!important}
+.lfoot p br+br{display:none}
+@media(max-height:620px){#login{height:auto;overflow:visible}}
+@media(max-width:800px){#login{height:auto;min-height:100vh!important;overflow:visible}#login .hero{grid-template-columns:auto 1fr;padding:14px 16px!important}#login .hero .lock{grid-column:1}.loglang{grid-column:2}}
 </style></head><body>
 <div id="login"><div class="hero"><div class="loglang"><span class="lang"><button data-l="es">ES</button><button data-l="en">EN</button></span></div><div class="lock"><svg viewBox="50 68 76 86" width="72" height="72" aria-label="Ámbar"><clipPath id="pk9"><path d="M88 72 C116 72 124 96 120 120 C116 144 98 152 82 150 C62 148 52 128 56 104 C60 84 70 72 88 72 Z"/></clipPath><path d="M88 72 C116 72 124 96 120 120 C116 144 98 152 82 150 C62 148 52 128 56 104 C60 84 70 72 88 72 Z" fill="#e09a2c"/><g clip-path="url(#pk9)"><path d="M50 130 L66 119 L74 123 L86 104 L93 91 L99 102 L104 97 L113 110 L126 118 L126 160 L50 160 Z" fill="#8a4c12"/><path d="M88.5 100 L93 91 L97.5 99" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></g></svg><div><div class="wm">ámbar</div><div class="slogan">TERMINAL FINANCIERA PARA<br>LA REPÚBLICA DOMINICANA</div></div></div></div>
 <div class="form"><div><div class="mlogo"><svg viewBox="50 68 76 86" width="30" height="30" aria-label="Ámbar"><clipPath id="pk2"><path d="M88 72 C116 72 124 96 120 120 C116 144 98 152 82 150 C62 148 52 128 56 104 C60 84 70 72 88 72 Z"/></clipPath><path d="M88 72 C116 72 124 96 120 120 C116 144 98 152 82 150 C62 148 52 128 56 104 C60 84 70 72 88 72 Z" fill="#e09a2c"/><g clip-path="url(#pk2)"><path d="M50 130 L66 119 L74 123 L86 104 L93 91 L99 102 L104 97 L113 110 L126 118 L126 160 L50 160 Z" fill="#8a4c12"/><path d="M88.5 100 L93 91 L97.5 99" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></g></svg><span class="bw">ámbar<small>TERMINAL FINANCIERA PARA<br>LA REPÚBLICA DOMINICANA</small></span></div><div class="tabs" id="tabs"><button data-t="in" class="on">Iniciar sesión</button><button data-t="up">Crear cuenta</button></div>
@@ -107,7 +128,7 @@ td{font-variant-numeric:tabular-nums}
 <div id="pwrow"><label for="p">Contraseña</label><input id="p" type="password" autocomplete="current-password" placeholder="••••••••" minlength="8"></div>
 <div id="upx" hidden><label for="p2">Confirmar contraseña</label><input id="p2" type="password" autocomplete="new-password" placeholder="••••••••">
 <div id="coderow"><label for="code">Código de invitación</label><input id="code" autocomplete="off" placeholder="Tu código" style="text-transform:uppercase"></div></div>
-<button class="b" id="go" type="submit">Entrar</button><div class="kh">o presiona <kbd>Enter ↵</kbd></div></form>
+<button class="b" id="go" type="submit">Entrar</button></form>
 <p class="note"><a href="#" id="forgot">¿Olvidaste tu contraseña?</a></p><p id="msg" class="note" role="status"></p></div></div><div class="lfoot"><p>Terminal financiera en estado experimental. El acceso queda limitado solamente a usuarios con la autorización expresa del desarrollador. Queda prohibida su distribución.<br><br>Prototipo desarrollado por Sebastián Rodríguez Caprettini</p></div></div>
 <div id="app" hidden>
 <header><span class="brand"><svg viewBox="50 68 76 86" width="56" height="56" aria-label="Ámbar"><clipPath id="pk3"><path d="M88 72 C116 72 124 96 120 120 C116 144 98 152 82 150 C62 148 52 128 56 104 C60 84 70 72 88 72 Z"/></clipPath><path d="M88 72 C116 72 124 96 120 120 C116 144 98 152 82 150 C62 148 52 128 56 104 C60 84 70 72 88 72 Z" fill="#e09a2c"/><g clip-path="url(#pk3)"><path d="M50 130 L66 119 L74 123 L86 104 L93 91 L99 102 L104 97 L113 110 L126 118 L126 160 L50 160 Z" fill="#8a4c12"/><path d="M88.5 100 L93 91 L97.5 99" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></g></svg><span class="bw">ámbar<small>TERMINAL FINANCIERA PARA<br>LA REPÚBLICA DOMINICANA</small></span></span><nav id="nav"></nav><span class="rt"><span id="who"></span><button class="out" id="logout">Cerrar sesión</button><span class="lang"><button data-l="es">ES</button><button data-l="en">EN</button></span></span></header>
