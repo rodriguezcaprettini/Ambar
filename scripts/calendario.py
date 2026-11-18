@@ -9,7 +9,7 @@ Guarda:
 Solo escribe los archivos si hay algo nuevo. Requisitos: pip install playwright && playwright install chromium
 Se ejecuta desde la raíz del repositorio.
 """
-import datetime as dt, json, os, sys
+import datetime as dt, json, os, re, sys
 from zoneinfo import ZoneInfo
 from playwright.sync_api import sync_playwright
 
@@ -39,8 +39,14 @@ def main():
 
     textos, red = [], set()
     with sync_playwright() as p:
-        b = p.chromium.launch()
-        pg = b.new_page(locale="es-DO", timezone_id="America/Santo_Domingo")
+        b = p.chromium.launch(args=["--disable-blink-features=AutomationControlled"])
+        ctx = b.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            locale="es-DO", timezone_id="America/Santo_Domingo", viewport={"width": 1366, "height": 900})
+        ctx.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        pg = ctx.new_page()
+        fallas = []
+        pg.on("requestfailed", lambda r: fallas.append(f"FALLÓ {r.url} {r.failure}"))
         def resp(r):
             u = r.url
             if any(u.endswith(x) for x in (".png", ".jpg", ".svg", ".woff", ".woff2", ".css", ".ico")): return
@@ -51,9 +57,10 @@ def main():
             except Exception:
                 pass
         pg.on("response", resp)
-        pg.goto(URL, wait_until="networkidle", timeout=90_000)
-        pg.wait_for_timeout(4000)
-        textos.append(pg.content())
+        estado = pg.goto(URL, wait_until="networkidle", timeout=90_000)
+        pg.wait_for_timeout(6000)
+        html = pg.content(); textos.append(html)
+        texto_visible = pg.inner_text("body") if pg.query_selector("body") else ""
         textos += [a for a in pg.eval_on_selector_all("a[href]", "els => els.map(e => e.href + ' ' + e.textContent)")]
         b.close()
     todo = "\n".join(textos)
@@ -74,15 +81,19 @@ def main():
     if cambios:
         json.dump(dict(sorted(pub.items())), open("data/publicacion.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 
-    # diagnóstico: direcciones que usa el calendario (solo se guarda si cambian)
-    nuevo = "\n".join(sorted(red)) + "\n"
+    # diagnóstico: direcciones que usa el calendario y lo que devolvió la página (solo se guarda si cambia)
+    nuevo = (f"Estado HTTP: {estado.status if estado else '-'}\n\n# Direcciones consultadas\n" + "\n".join(sorted(red))
+             + "\n\n# Peticiones fallidas\n" + "\n".join(sorted(set(fallas)))
+             + "\n\n# Texto visible (primeros 1500 caracteres)\n" + texto_visible[:1500]
+             + "\n\n# HTML (primeros 3000 caracteres)\n" + html[:3000] + "\n")
     try:
         viejo = open("data/calendario_red.txt", encoding="utf-8").read()
     except FileNotFoundError:
         viejo = ""
     if nuevo != viejo:
         open("data/calendario_red.txt", "w", encoding="utf-8").write(nuevo)
-    print(f"Direcciones consultadas por el calendario: {len(red)} · textos revisados: {len(textos)} ({len(todo):,} caracteres)")
+    print(f"Estado HTTP {estado.status if estado else '-'} · direcciones consultadas: {len(red)} · peticiones fallidas: {len(set(fallas))} · textos revisados: {len(textos)} ({len(todo):,} caracteres)")
+    print("Texto visible:", re.sub(r"\s+", " ", texto_visible)[:300])
     if len(todo) < 2000:
         print("AVISO: la página devolvió muy poco contenido; puede que el calendario no haya cargado.", file=sys.stderr)
 
