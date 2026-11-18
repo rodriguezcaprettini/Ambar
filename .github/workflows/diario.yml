@@ -17,9 +17,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - run: pip install requests pandas openpyxl beautifulsoup4
-      - name: Boletín BVRD del día
+      - run: pip install requests pandas openpyxl beautifulsoup4 playwright
+      - name: Boletín BVRD del día (servidor)
         run: python scripts/boletin.py
+      - name: ¿Ya aparece en la página web de la BVRD?
+        continue-on-error: true   # si la página falla, el resto del robot sigue
+        run: |
+          python -m playwright install --with-deps chromium > /dev/null
+          python scripts/calendario.py
       - name: Noticias
         run: python scripts/noticias.py
       - name: Preparar datos de la terminal

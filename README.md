@@ -15,6 +15,8 @@ Prototipo desarrollado por JSRC, no para distribución.
 - `precios.csv` — precio y rendimiento por título y día (promedio ponderado por monto).
 - `emisiones.csv` — catálogo de emisiones corporativas vigentes (último boletín).
 - `noticias.json` — últimos 200 titulares.
+- `publicacion.json` — para cada boletín: hora (RD) en que apareció en el servidor de la BVRD (`en_servidor`) y primera hora en que se vio en la página pública boletines.bvrd.com.do (`en_pagina`). Lo llena `scripts/calendario.py`, que abre la página con un navegador automático.
+- `calendario_red.txt` — direcciones que consulta el calendario de la BVRD (diagnóstico).
 - `descargas.json` — registro de cada boletín: primera vez que apareció en el servidor de la BVRD, última descarga, número de versiones y si ya es definitivo (descargado a partir de las 9:00 pm hora RD o un día posterior). Sirve para saber a qué hora publica la BVRD.
 
 ## Si algo falla

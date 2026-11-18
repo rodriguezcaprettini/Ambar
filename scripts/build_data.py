@@ -93,7 +93,13 @@ try:
     reg = json.load(open("data/descargas.json", encoding="utf-8"))
 except FileNotFoundError:
     reg = {}
-prelim = {d: v.get("primera_vez") for d, v in reg.items() if d in FI and not v.get("final", True)}
+try:
+    pub = json.load(open("data/publicacion.json", encoding="utf-8"))
+except FileNotFoundError:
+    pub = {}
+# Preliminar = se bajó del servidor pero aún no aparece en la página de la BVRD ni pasó la descarga de las 9 pm
+prelim = {d: v.get("primera_vez") for d, v in reg.items()
+          if d in FI and not v.get("final", True) and not pub.get(d, {}).get("en_pagina")}
 
 D = {"prelim": prelim, "fecha": fechas[-1], "fechas": fechas, "fx": fx, "ruedas": ruedas, "meses": meses, "ins": ins, "s": S,
      "cat": cat[cols].replace({np.nan: None}).to_dict("records")}
