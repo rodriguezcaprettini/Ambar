@@ -102,8 +102,26 @@ except FileNotFoundError:
 prelim = {d: v.get("primera_vez") for d, v in reg.items()
           if d in FI and not v.get("final", True) and not pub.get(d, {}).get("en_pagina")}
 
+# Mercado primario (colocaciones): una fila por fecha, título, modo, precio y rendimiento
+PRI_COLS = ["fecha", "isin", "titulo", "emisor", "mercado", "moneda", "venc", "cupon", "modo", "rueda", "precio", "rend", "monto", "monto_dop", "n"]
+PRI = []
+if os.path.exists("data/primario.csv") and os.path.getsize("data/primario.csv") > 10:
+    pr = pd.read_csv("data/primario.csv")
+    if len(pr):
+        for c in ["precio", "rendimiento", "monto", "monto_dop", "cupon"]:
+            if c not in pr: pr[c] = np.nan
+            pr[c] = pd.to_numeric(pr[c], errors="coerce")
+        pr["venc"] = pd.to_datetime(pr.get("vencimiento"), errors="coerce").dt.date.astype(str).replace("NaT", None)
+        pr["precio_r"] = pr.precio.round(6); pr["rend_r"] = pr.rendimiento.round(6)
+        k = ["fecha", "isin", "titulo", "emisor", "mercado", "moneda", "venc", "cupon", "modo", "rueda", "precio_r", "rend_r"]
+        g = pr.groupby(k, dropna=False).agg(monto=("monto", "sum"), monto_dop=("monto_dop", "sum"), n=("id", "size")).reset_index()
+        g = g.sort_values(["fecha", "monto_dop"], ascending=[False, False])
+        PRI = [[r.fecha, r.isin, str(r.titulo).strip(), str(r.emisor).strip(), r.mercado, r.moneda, r.venc if isinstance(r.venc, str) else None,
+                num(r.cupon, 4), r.modo, r.rueda, num(r.precio_r), num(r.rend_r, 4), num(r.monto, 2), num(r.monto_dop, 2), int(r.n)] for r in g.itertuples()]
+print(f"Mercado primario: {len(PRI)} filas")
+
 D = {"prelim": prelim, "fecha": fechas[-1], "fechas": fechas, "fx": fx, "ruedas": ruedas, "meses": meses, "ins": ins, "s": S,
-     "cat": cat[cols].replace({np.nan: None}).to_dict("records")}
+     "cat": cat[cols].replace({np.nan: None}).to_dict("records"), "pri": {"cols": PRI_COLS, "rows": PRI}}
 try:
     noticias = json.load(open("data/noticias.json", encoding="utf-8"))
 except FileNotFoundError:

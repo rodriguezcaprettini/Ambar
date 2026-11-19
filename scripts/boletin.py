@@ -79,6 +79,60 @@ def procesar(xls, fecha):
         "operaciones": len(x), "monto_dop": x.monto_dop.sum()}), include_groups=False).reset_index()
     return ops, precios
 
+PRIM = [("BB_RFMPOperDia", "renta_fija", "subasta"), ("BB_RFMPOperDiaFirme", "renta_fija", "firme"),
+        ("BB_RVMPOperDia", "renta_variable", "subasta"), ("BB_RVMPOperDiaFirme", "renta_variable", "firme")]
+
+def primario(xls, fecha):
+    """Colocaciones del MERCADO PRIMARIO (nuevas emisiones vendidas por el emisor).
+    'subasta' = operaciones del día en la BVRD; 'firme' = registro de colocaciones en firme."""
+    partes = []
+    for hoja, mercado, modo in PRIM:
+        try:
+            t = tablas(xls, hoja, "Número Operación")
+        except ValueError:  # boletines viejos sin esa hoja
+            continue
+        if t.empty: continue
+        t = t.rename(columns={"Número Operación":"id","Rueda":"rueda","Cód. Local":"titulo","Cód. ISIN":"isin",
+            "Cód. Emisor":"emisor","Fecha Venc.":"vencimiento","Tasa Cupón":"cupon","Valor Negociado":"nominal",
+            "Precio":"precio","Valor Transado":"monto","Rend/ Equiv":"rendimiento","Mon":"moneda",
+            "Equiv en DOP":"monto_dop","Equivalente en DOP":"monto_dop","Cant. de Cuotas":"cantidad"})
+        t["mercado"] = mercado; t["modo"] = modo
+        partes.append(t)
+    if not partes: return pd.DataFrame()
+    p = pd.concat(partes, ignore_index=True)
+    keep = [c for c in ["id","rueda","titulo","isin","emisor","vencimiento","cupon","nominal","precio","monto",
+                        "rendimiento","moneda","monto_dop","cantidad","mercado","modo"] if c in p]
+    p = p[keep].copy(); p["fecha"] = fecha.isoformat()
+    for c in ["titulo","isin","emisor","moneda","rueda"]:
+        if c in p: p[c] = p[c].astype(str).str.strip()
+    return p
+
+def guardar_primario(p, fecha, ruta="data/primario.csv"):
+    """Reemplaza las colocaciones de esa fecha (aunque hoy no haya ninguna)."""
+    viejo = pd.read_csv(ruta, dtype=str) if os.path.exists(ruta) else pd.DataFrame(columns=["fecha"])
+    viejo = viejo[viejo["fecha"] != fecha.isoformat()]
+    df = pd.concat([viejo, p.astype(str)]) if len(p) else viejo
+    os.makedirs("data", exist_ok=True)
+    df.sort_values("fecha", kind="stable").to_csv(ruta, index=False)
+
+def solo_primario(desde, hasta):
+    """Recarga histórica SOLO del mercado primario (no toca el registro ni el mercado secundario)."""
+    d, n = desde, 0
+    while d <= hasta:
+        if d.weekday() < 5:
+            for u in urls(d):
+                r = requests.get(u, timeout=60, headers={"User-Agent": "Mozilla/5.0 (Ambar)"})
+                if r.status_code == 200 and r.content[:2] == b"PK":
+                    try:
+                        p = primario(io.BytesIO(r.content), d); guardar_primario(p, d); n += 1
+                        print(f"{d}: {len(p)} operaciones de mercado primario")
+                    except Exception as e:
+                        print(f"{d}: error ({e})")
+                    break
+            time.sleep(1.5)
+        d += dt.timedelta(days=1)
+    print(f"Resumen: {n} boletines leídos para mercado primario")
+
 def emisiones(xls):
     rf = tablas(xls, "BB_RFEmisionesCorpV", "Código ISIN"); rf["mercado"] = "renta_fija"
     rv = tablas(xls, "BB_RVEmisionesCorpV", "Código ISIN"); rv["mercado"] = "renta_variable"
@@ -141,6 +195,10 @@ def un_dia(fecha, archivo=None):
               "versiones": previo.get("versiones", 0) + 1}
     ops, precios = procesar(xls, fecha)
     os.makedirs("data", exist_ok=True)
+    try:
+        guardar_primario(primario(xls, fecha), fecha)
+    except Exception as e:
+        print(f"{fecha}: no se pudo leer el mercado primario ({e})")
     if len(ops):
         agregar(ops, "data/operaciones.csv", ["id"])
         agregar(precios, "data/precios.csv", ["fecha","isin"])
@@ -158,7 +216,9 @@ def un_dia(fecha, archivo=None):
 
 if __name__ == "__main__":
     a = sys.argv[1:]
-    if a and a[0] == "--archivo":
+    if a and a[0] == "--primario":
+        solo_primario(dt.date.fromisoformat(a[1]), dt.date.fromisoformat(a[2]))
+    elif a and a[0] == "--archivo":
         f = hoy_rd() if len(a) < 3 else dt.date.fromisoformat(a[2]); un_dia(f, a[1])
     elif len(a) == 2:
         d, fin = dt.date.fromisoformat(a[0]), dt.date.fromisoformat(a[1])

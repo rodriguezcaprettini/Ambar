@@ -11,6 +11,12 @@ on:
         description: "Fecha final (AAAA-MM-DD)"
         required: true
         default: "2026-11-05"
+      modo:
+        description: "todo = secundario y primario · primario = solo recargar mercado primario"
+        required: true
+        default: "todo"
+        type: choice
+        options: [todo, primario]
 permissions:
   contents: read
 concurrency: datos
@@ -29,7 +35,12 @@ jobs:
       - name: Traer estado desde Supabase
         run: python scripts/supa.py bajar-estado
       - name: Descargar boletines
-        run: python scripts/boletin.py ${{ inputs.desde }} ${{ inputs.hasta }}
+        run: |
+          if [ "${{ inputs.modo }}" = "primario" ]; then
+            python scripts/boletin.py --primario ${{ inputs.desde }} ${{ inputs.hasta }}
+          else
+            python scripts/boletin.py ${{ inputs.desde }} ${{ inputs.hasta }}
+          fi
       - name: Preparar datos de la terminal
         run: python scripts/build_data.py
       - name: Subir a Supabase (almacenamiento privado)
