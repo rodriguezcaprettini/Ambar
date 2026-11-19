@@ -238,14 +238,15 @@ def archivo(conocidas, maximo):
     cand = [c for c in cand if not c["d"] or c["d"] >= DESDE]
     cand.sort(key=lambda c: c["d"] or "9999", reverse=True)
     out = []
-    for i, c in enumerate(cand[:maximo]):
-        t, (f, hr) = nota(c["u"])
-        if t and len(t) > 20:
-            c["t"] = t
-            if not c["d"] or c["d"] == f: c["d"], c["h"] = f or c["d"], hr
-            if c["d"] and c["d"] >= DESDE: out.append(c)
-        time.sleep(0.25)
-        if i % 250 == 0: print(f"  … {i} de {min(len(cand), maximo)}")
+    from concurrent.futures import ThreadPoolExecutor
+    lote = cand[:maximo]
+    with ThreadPoolExecutor(max_workers=6) as ex:  # 6 descargas a la vez (repartidas entre 5 medios)
+        for i, (c, (t, (f, hr))) in enumerate(zip(lote, ex.map(lambda c: nota(c["u"]), lote))):
+            if t and len(t) > 20:
+                c["t"] = t
+                if not c["d"] or c["d"] == f: c["d"], c["h"] = f or c["d"], hr
+                if c["d"] and c["d"] >= DESDE: out.append(c)
+            if i % 500 == 0: print(f"  … {i} de {len(lote)}")
     print(f"Archivo: {len(out)} titulares agregados ({max(0, len(cand) - maximo)} pendientes para la próxima corrida)")
     return out
 
