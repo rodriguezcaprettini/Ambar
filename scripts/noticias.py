@@ -30,9 +30,10 @@ def limpio(t):
     return t[:1].upper() + t[1:] if t else t
 
 def anclas(url):
-    html = requests.get(url, headers=UA, timeout=60).text
+    html = requests.get(url, headers=UA, timeout=60).content  # bytes: BeautifulSoup detecta bien la codificación
     for a in BeautifulSoup(html, "html.parser").find_all("a", href=True):
-        yield a["href"].split("?")[0].split("#")[0], limpio(a.get_text(" "))
+        hd = a.find(["h1", "h2", "h3", "h4"])  # si el enlace envuelve un título, se usa solo el título (sin el resumen)
+        yield a["href"].split("?")[0].split("#")[0], limpio((hd or a).get_text(" "))
 
 def diario_libre(url="https://www.diariolibre.com/economia"):
     out = []
@@ -107,7 +108,72 @@ def banco_central(pagina=0, tam=15):
                         "c": cat, "d": f, "h": hc if fc == f else None})
     return out
 
-FUENTES = (diario_libre, diario_financiero, revista_mercado, el_dinero, listin, hoy, el_dia, banco_central)
+def el_nuevo_diario(url="https://elnuevodiario.com.do/economia/"):
+    out = []
+    for u, t in anclas(url):
+        m = re.match(r"https://elnuevodiario\.com\.do/([a-z0-9-]+)/?$", u)
+        if m and m[1].count("-") >= 4 and len(t) > 25 and not m[1].startswith(("politica-de-", "terminos-", "aviso-")):
+            out.append({"s": "El Nuevo Diario", "t": t, "u": u, "c": "Economía", "d": None})
+    return out
+
+def n_digital(url="https://n.com.do/economia/"):
+    out = []
+    for u, t in anclas(url):
+        m = re.match(r"https://n\.com\.do/(\d{4})/(\d\d)/(\d\d)/[a-z0-9-]{12,}/?$", u)
+        t = re.sub(r"^.*?\d+\s*Min\s+", "", t)  # quita "Artículo Actualidad · octubre 13, 2026 · 4 Min"
+        if m and len(t) > 25 and len(t) < 220:
+            out.append({"s": "N Digital", "t": t, "u": u, "c": "Economía", "d": f"{m[1]}-{m[2]}-{m[3]}"})
+    return out
+
+def cdn(url="https://cdn.com.do/economicas/"):
+    out = []
+    for u, t in anclas(url):
+        if re.match(r"https://cdn\.com\.do/economicas/[a-z0-9-]{12,}/?$", u) and len(t) > 25:
+            out.append({"s": "CDN", "t": t, "u": u, "c": "Economía", "d": None})
+    return out
+
+def acento():
+    """Acento no tiene portada de economía estable: se usa su sitemap de Google News (trae título y fecha)."""
+    x = requests.get("https://acento.com.do/sitemaps/sitemaps-googlenews.xml", headers=UA, timeout=60).text
+    res = []
+    for b in re.findall(r"<url>(.*?)</url>", x, re.S):
+        u = re.search(r"<loc>\s*(.*?)\s*</loc>", b); t = re.search(r"<news:title>\s*(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?\s*</news:title>", b, re.S)
+        f = re.search(r"<news:publication_date>\s*(.*?)\s*</news:publication_date>", b)
+        if u and t and "/economia/" in u[1]:
+            d, hr = a_rd(f[1]) if f else (None, None)
+            res.append({"s": "Acento", "t": limpio(BeautifulSoup(t[1], "html.parser").get_text()), "u": u[1], "c": "Economía", "d": d, "h": hr})
+    return res
+
+def micm(url="https://micm.gob.do/noticias/"):
+    out = []
+    for u, t in anclas(url):
+        m = re.match(r"https://micm\.gob\.do/([a-z0-9-]+)/?$", u)
+        if m and m[1].count("-") >= 4 and len(t) > 25:
+            out.append({"s": "MICM", "t": t, "u": u, "c": "Comercio e industria", "d": None})
+    return out
+
+def dgii(url="https://dgii.gov.do/noticias/Paginas/default.aspx"):
+    out = []
+    for u, t in anclas(url):
+        if u.startswith("/"): u = "https://dgii.gov.do" + u
+        u = u.replace("http://", "https://")
+        if re.search(r"dgii\.gov\.do/noticias/Paginas/(?!default).+\.aspx$", u) and len(t) > 25:
+            f = re.search(r"(\d\d)/(\d\d)/(\d{4})\s*$", t)
+            out.append({"s": "DGII", "t": re.sub(r"\s*\d\d/\d\d/\d{4}\s*$", "", t), "u": u, "c": "Impuestos",
+                        "d": f"{f[3]}-{f[2]}-{f[1]}" if f else None})
+    return out
+
+def superintendencia_bancos(url="https://sb.gob.do/publicaciones/cronologia-sb/publicaciones-de-prensa/archivo-de-prensa/"):
+    out = []
+    for u, t in anclas(url):
+        if u.startswith("/"): u = "https://sb.gob.do" + u
+        if re.match(r"https://(www\.)?sb\.gob\.do/publicaciones/cronologia-sb/publicaciones-de-prensa/archivo-de-prensa/[^/]{12,}/?$", u) and len(t) > 25:
+            out.append({"s": "Superintendencia de Bancos", "t": t, "u": u, "c": "Banca", "d": None})
+    return out
+
+# Bloqueados por Cloudflare para robots (no se intenta saltar esa protección): El Caribe, SIMV, BVRD, Ministerio de Hacienda, MEPyD.
+FUENTES = (diario_libre, diario_financiero, revista_mercado, el_dinero, listin, hoy, el_dia, banco_central,
+           el_nuevo_diario, n_digital, cdn, acento, micm, dgii, superintendencia_bancos)
 
 RDZ = ZoneInfo("America/Santo_Domingo")
 _ISO = r'(\d{4}-\d\d-\d\d(?:[T ]\d\d:\d\d(?::\d\d(?:\.\d+)?)?(?:Z|[+-]\d\d:?\d\d)?)?)'
@@ -148,6 +214,9 @@ PAGINAS = [
     (revista_mercado, lambda n: f"https://revistamercado.do/category/money-invest/page/{n}/", 400),
     (listin, lambda n: f"https://listindiario.com/economia/{n}", 1500),
     (hoy, lambda n: f"https://hoy.com.do/economia/{n}/", 1000),
+    (el_nuevo_diario, lambda n: f"https://elnuevodiario.com.do/economia/page/{n}/", 3000),
+    (n_digital, lambda n: f"https://n.com.do/economia/page/{n}/", 1500),
+    (micm, lambda n: f"https://micm.gob.do/noticias/page/{n}/", 600),
 ]
 
 def historial(conocidas):
@@ -206,6 +275,8 @@ def _locs_fecha(url):
     except Exception:
         return []
     out = []
+    if "<url" not in x:  # sitemap en texto plano (una URL por línea)
+        return [(l.strip(), None) for l in x.splitlines() if l.strip().startswith("http")]
     for b in re.findall(r"<url>(.*?)</url>", x, re.S):
         m = re.search(r"<loc>\s*(?:<!\[CDATA\[)?\s*(.*?)\s*(?:\]\]>)?\s*</loc>", b)
         lm = re.search(r"<lastmod>\s*(\d{4}-\d\d-\d\d)", b)
@@ -229,6 +300,16 @@ ARCHIVO = [  # (fuente, sitemaps, filtro de URL de nota económica, categoría)
      lambda u: re.search(r"hoy\.com\.do/economia/[a-z0-9-]{10,}_\d+\.html", u), "Economía"),
     ("Diario Financiero", lambda: _indice("https://diariofinanciero.do/sitemap_index.xml", lambda s: "post-sitemap" in s),
      lambda u: (m := re.match(r"https://diariofinanciero\.do/([a-z-]+)/[a-z0-9-]{12,}/?$", u)) and m[1] not in EXCLUIR_DF + ("herramientas-financieras",), "Economía"),
+    ("CDN", lambda: _indice("https://cdn.com.do/sitemaps.xml", lambda s: "sitemap-post-" in s),
+     lambda u: re.match(r"https://cdn\.com\.do/economicas/[a-z0-9-]{12,}/?$", u), "Economía"),
+    ("Acento", lambda: _indice("https://acento.com.do/sitemaps/sitemaps-index.xml", lambda s: "acento-" in s),
+     lambda u: re.match(r"https://acento\.com\.do/economia/", u), "Economía"),
+    ("MICM", lambda: _indice("https://micm.gob.do/sitemap_index.xml", lambda s: "post-sitemap" in s),
+     lambda u: re.match(r"https://micm\.gob\.do/[a-z0-9-]{25,}/?$", u), "Comercio e industria"),
+    ("Superintendencia de Bancos", lambda: ["https://sb.gob.do/sitemap/"],
+     lambda u: re.match(r"https://(www\.)?sb\.gob\.do/publicaciones/cronologia-sb/publicaciones-de-prensa/archivo-de-prensa/[^/]{12,}/?$", u), "Banca"),
+    ("DGII", lambda: ["https://dgii.gov.do/sitemap0.xml"],
+     lambda u: re.search(r"dgii\.gov\.do/noticias/Paginas/(?!default).+\.aspx$", u), "Impuestos"),
     ("Revista Mercado", lambda: _indice("https://www.revistamercado.do/sitemap_index.xml", lambda s: "post-sitemap" in s),
      lambda u: re.match(r"https://revistamercado\.do/(empresas|money-invest|business|market-brief)/(?!daily-news)", u), "Empresas"),
 ]
@@ -241,8 +322,12 @@ def nota(u):
         return None, (None, None)
     m = re.search(r'<meta[^>]+property="og:title"[^>]+content="([^"]+)"', h) or re.search(r"<title>(.*?)</title>", h, re.S)
     t = limpio(BeautifulSoup(m[1], "html.parser").get_text()) if m else None
-    if t: t = re.sub(r"\s*[|–-]\s*(Diario Libre|Listín Diario|Hoy Digital|Diario Financiero|Revista Mercado|Mercado)\s*$", "", t)
-    return t, _publicado(h)
+    if t: t = re.sub(r"\s*[|–-]\s*(Diario Libre|Listín Diario|Hoy Digital|Diario Financiero|Revista Mercado|Mercado|El Nuevo Diario|N Digital|CDN|Acento|MICM|DGII|SB|Superintendencia de Bancos[^|]*)\s*$", "", t)
+    f = _publicado(h)
+    if not f[0]:  # páginas sin metadatos (p. ej. DGII): primera fecha dd/mm/aaaa del texto
+        m = re.search(r"\b(\d\d)/(\d\d)/(20\d\d)\b", re.sub(r"<[^>]+>", " ", h))
+        if m: f = (f"{m[3]}-{m[2]}-{m[1]}", None)
+    return t, f
 
 def archivo(conocidas, maximo):
     cand = []
@@ -250,7 +335,7 @@ def archivo(conocidas, maximo):
         n0 = len(cand)
         for s in sitemaps():
             for u, lm in _locs_fecha(s):
-                u = u.split("?")[0]
+                u = u.split("?")[0].replace("http://dgii.gov.do:80/", "https://dgii.gov.do/").replace("http://dgii.gov.do/", "https://dgii.gov.do/")
                 if lm and lm < DESDE: continue  # nota modificada por última vez antes de 2025: no puede ser de 2025 en adelante
                 if u not in conocidas and filtro(u):
                     conocidas.add(u); m = re.search(r"/(\d{4})/?(\d\d)/?(\d\d)/", u)
@@ -265,7 +350,7 @@ def archivo(conocidas, maximo):
     out = []
     from concurrent.futures import ThreadPoolExecutor
     lote = cand[:maximo]
-    with ThreadPoolExecutor(max_workers=8) as ex:  # 6 descargas a la vez (repartidas entre 5 medios)
+    with ThreadPoolExecutor(max_workers=10) as ex:  # 6 descargas a la vez (repartidas entre 5 medios)
         for i, (c, (t, (f, hr))) in enumerate(zip(lote, ex.map(lambda c: nota(c["u"]), lote))):
             if t and len(t) > 20:
                 c["t"] = t

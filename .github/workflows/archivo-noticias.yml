@@ -1,6 +1,6 @@
 # Archivo histórico de noticias económicas (todo lo que permita cada medio), por tandas de madrugada.
 # Escribe directo en la tabla public.noticias de Supabase, así que no frena al robot de cada 30 minutos.
-# Cada noche procesa hasta 15,000 notas; cuando ya no quedan pendientes, la corrida termina en pocos minutos.
+# Cada noche procesa hasta 25,000 notas; cuando ya no quedan pendientes, la corrida termina en pocos minutos.
 name: Archivo de noticias (madrugada)
 on:
   schedule:
@@ -9,7 +9,7 @@ on:
     inputs:
       maximo:
         description: "Notas a procesar en esta tanda"
-        default: "15000"
+        default: "25000"
 permissions:
   contents: read
 concurrency: archivo-noticias
@@ -26,4 +26,4 @@ jobs:
         with: { python-version: "3.12" }
       - run: pip install requests beautifulsoup4
       - run: mkdir -p data && python scripts/supa.py bajar-estado
-      - run: python scripts/noticias.py --archivo ${{ inputs.maximo || '15000' }}
+      - run: python scripts/noticias.py --archivo ${{ inputs.maximo || '25000' }}
