@@ -401,7 +401,7 @@ function crvPop(){const P=$("cpop"),C=crvCand(),on=i=>CRV.sel?CRV.sel.includes(i
 // Titulares recientes intercalando fuentes (ronda por fuente, de más reciente a más antiguo)
 const nH=n=>n.h&&n.h!="00:00"?n.h:(n.vh&&(!n.v||n.v==n.d)?tr("Aprox")+" "+n.vh:tr("sin hora"));
 const nfd=n=>fd(n.d)+" · "+nH(n),nkey=n=>(n.d||"")+(n.h&&n.h!="00:00"?n.h:(n.vh||""))+(n.v||"");
-const newsHTML=()=>newsMix(30).map(n=>`<a class=nl1 href="${n.u}" target="_blank" rel="noopener" title="${(n.t||"").replace(/"/g,"&quot;")}"><span class=nt1>${n.t}</span><em class=nd>${n.d?fd(n.d):""}</em><em class=nh>${nH(n)}</em><em class=ns>${n.s}</em></a>`).join("")||`<p class=src>${tr("Sin noticias.")}</p>`;
+const newsHTML=()=>[...NEWS].sort((a,b)=>((b.d||"")+(b.h&&b.h!="00:00"?b.h:""))<((a.d||"")+(a.h&&a.h!="00:00"?a.h:""))?-1:1).slice(0,30).map(n=>`<a class=nl1 href="${n.u}" target="_blank" rel="noopener" title="${(n.t||"").replace(/"/g,"&quot;")}"><span class=nt1>${n.t}</span><em class=nd>${n.d?fd(n.d):""}</em><em class=nh>${nH(n)}</em><em class=ns>${n.s}</em></a>`).join("")||`<p class=src>${tr("Sin noticias.")}</p>`;
 // MKT: titulares en vivo desde la tabla (cada 5 minutos), para no depender del archivo cargado al entrar
 async function newsLive(){try{const {data,error}=await qNews({n:250,cuenta:false});if(!error&&data&&data.length){const vistos=new Set(data.map(n=>n.u));NEWS.splice(0,NEWS.length,...data,...NEWS.filter(n=>!vistos.has(n.u)));if($("mnews"))$("mnews").innerHTML=newsHTML()}}catch(e){}}
 setInterval(()=>{if((location.hash.slice(1)||"mercado")=="mercado")newsLive()},300000);
