@@ -162,6 +162,76 @@ def historial(conocidas):
         if not L or (fechas and max(fechas) < DESDE): break
     return res
 
+# ---------- Archivo vía sitemaps (las portadas solo muestran las últimas semanas) ----------
+def _locs(url):
+    try:
+        x = requests.get(url, headers=UA, timeout=60).text
+    except Exception:
+        return []
+    return re.findall(r"<loc>\s*(?:<!\[CDATA\[)?\s*(.*?)\s*(?:\]\]>)?\s*</loc>", x)
+
+def _meses():
+    d, fin, out = dt.date(int(DESDE[:4]), int(DESDE[5:7]), 1), dt.date.fromisoformat(HOY), []
+    while d <= fin:
+        out.append(d); d = (d.replace(day=28) + dt.timedelta(days=4)).replace(day=1)
+    return out
+
+def _indice(url, filtro):
+    return [s for s in _locs(url) if filtro(s)]
+
+ARCHIVO = [  # (fuente, sitemaps, filtro de URL de nota económica, categoría)
+    ("Diario Libre", lambda: [f"https://www.diariolibre.com/sitemapnoticias/{m:%Y%m}" for m in _meses()],
+     lambda u: re.search(r"diariolibre\.com/economia/[a-z-]+/(\d{4})/\d\d/\d\d/", u), "Economía"),
+    ("Listín Diario", lambda: _indice("https://listindiario.com/sitemap-index.xml", lambda s: "images" not in s and re.search(r"20(2[5-9])\d\d", s)),
+     lambda u: re.search(r"listindiario\.com/economia/(?:[a-z-]+/)?\d{8}/", u), "Economía"),
+    ("Hoy", lambda: _indice("https://hoy.com.do/sitemap-index.xml", lambda s: "images" not in s and re.search(r"20(2[5-9])\d\d", s)),
+     lambda u: re.search(r"hoy\.com\.do/economia/[a-z0-9-]{10,}_\d+\.html", u), "Economía"),
+    ("Diario Financiero", lambda: _indice("https://diariofinanciero.do/sitemap_index.xml", lambda s: "post-sitemap" in s),
+     lambda u: (m := re.match(r"https://diariofinanciero\.do/([a-z-]+)/[a-z0-9-]{12,}/?$", u)) and m[1] not in EXCLUIR_DF + ("herramientas-financieras",), "Economía"),
+    ("Revista Mercado", lambda: _indice("https://www.revistamercado.do/sitemap_index.xml", lambda s: "post-sitemap" in s),
+     lambda u: re.match(r"https://revistamercado\.do/(empresas|money-invest|business|market-brief)/(?!daily-news)", u), "Empresas"),
+]
+
+def nota(u):
+    """Título y fecha de publicación leídos de la propia nota."""
+    try:
+        h = requests.get(u, headers=UA, timeout=30).text[:400000]
+    except Exception:
+        return None, None
+    m = re.search(r'<meta[^>]+property="og:title"[^>]+content="([^"]+)"', h) or re.search(r"<title>(.*?)</title>", h, re.S)
+    t = limpio(BeautifulSoup(m[1], "html.parser").get_text()) if m else None
+    if t: t = re.sub(r"\s*[|–-]\s*(Diario Libre|Listín Diario|Hoy Digital|Diario Financiero|Revista Mercado|Mercado)\s*$", "", t)
+    f = None
+    for rx in (r'property="article:published_time"\s+content="(\d{4}-\d\d-\d\d)', r'"datePublished"\s*:\s*"(\d{4}-\d\d-\d\d)', r'<time[^>]+datetime="(\d{4}-\d\d-\d\d)'):
+        mm = re.search(rx, h)
+        if mm: f = mm[1]; break
+    return t, f
+
+def archivo(conocidas, maximo):
+    cand = []
+    for fuente, sitemaps, filtro, cat in ARCHIVO:
+        n0 = len(cand)
+        for s in sitemaps():
+            for u in _locs(s):
+                u = u.split("?")[0]
+                if u not in conocidas and filtro(u):
+                    conocidas.add(u); m = re.search(r"/(\d{4})/?(\d\d)/?(\d\d)/", u)
+                    cand.append({"s": fuente, "u": u, "c": cat, "d": f"{m[1]}-{m[2]}-{m[3]}" if m else None})
+            time.sleep(0.5)
+        print(f"Archivo {fuente}: {len(cand) - n0} notas nuevas en los sitemaps")
+    cand = [c for c in cand if not c["d"] or c["d"] >= DESDE]
+    cand.sort(key=lambda c: c["d"] or "9999", reverse=True)
+    out = []
+    for i, c in enumerate(cand[:maximo]):
+        t, f = nota(c["u"])
+        if t and len(t) > 20:
+            c["t"] = t; c["d"] = c["d"] or f
+            if c["d"] and c["d"] >= DESDE: out.append(c)
+        time.sleep(0.25)
+        if i % 250 == 0: print(f"  … {i} de {min(len(cand), maximo)}")
+    print(f"Archivo: {len(out)} titulares agregados ({max(0, len(cand) - maximo)} pendientes para la próxima corrida)")
+    return out
+
 def main():
     try:
         viejas = json.load(open("data/noticias.json", encoding="utf-8"))
@@ -170,7 +240,9 @@ def main():
     previas = {n["u"]: n for n in viejas}
     nuevas = []
     if "--historial" in sys.argv:
-        nuevas += historial({n["u"] for n in viejas})
+        k = {n["u"] for n in viejas}
+        nuevas += historial(k)
+        nuevas += archivo(k, int(sys.argv[sys.argv.index("--historial") + 1]) if len(sys.argv) > sys.argv.index("--historial") + 1 else 6000)
     for fuente in FUENTES:
         try:
             n = fuente(); nuevas += n; print(f"{fuente.__name__}: {len(n)} titulares")
