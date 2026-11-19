@@ -1,0 +1,28 @@
+# Tandas del archivo histórico de noticias (desde enero de 2025), de madrugada para no frenar al robot de cada 30 minutos.
+# Noche del 19 al 20 de noviembre de 2026: 11:00 pm, 1:00 am y 3:00 am hora RD. Después de esa noche se puede borrar este archivo.
+name: Archivo de noticias (madrugada)
+on:
+  schedule:
+    - cron: "0 3,5,7 20 11 *"
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency: datos
+jobs:
+  archivo:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+    timeout-minutes: 110
+    steps:
+      - name: Solo en 2026
+        run: '[ "$(date -u +%Y)" = "2026" ] || { echo "Ya pasó la fecha programada"; exit 1; }'
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.12" }
+      - run: pip install requests pandas openpyxl beautifulsoup4
+      - run: python scripts/supa.py bajar-estado
+      - run: python scripts/noticias.py --historial 6000
+      - run: python scripts/build_data.py
+      - run: python scripts/supa.py subir

@@ -195,6 +195,23 @@ def _locs(url):
         return []
     return re.findall(r"<loc>\s*(?:<!\[CDATA\[)?\s*(.*?)\s*(?:\]\]>)?\s*</loc>", x)
 
+def _locs_fecha(url):
+    """Como _locs, pero con la fecha <lastmod> de cada nota (sirve para descartar notas viejas sin abrirlas)."""
+    try:
+        c = requests.get(url, headers=UA, timeout=60).content
+        try:
+            import gzip; x = gzip.decompress(c).decode("utf-8", "ignore")
+        except OSError:
+            x = c.decode("utf-8", "ignore")
+    except Exception:
+        return []
+    out = []
+    for b in re.findall(r"<url>(.*?)</url>", x, re.S):
+        m = re.search(r"<loc>\s*(?:<!\[CDATA\[)?\s*(.*?)\s*(?:\]\]>)?\s*</loc>", b)
+        lm = re.search(r"<lastmod>\s*(\d{4}-\d\d-\d\d)", b)
+        if m: out.append((m[1], lm[1] if lm else None))
+    return out
+
 def _meses():
     d, fin, out = dt.date(int(DESDE[:4]), int(DESDE[5:7]), 1), dt.date.fromisoformat(HOY), []
     while d <= fin:
@@ -232,8 +249,9 @@ def archivo(conocidas, maximo):
     for fuente, sitemaps, filtro, cat in ARCHIVO:
         n0 = len(cand)
         for s in sitemaps():
-            for u in _locs(s):
+            for u, lm in _locs_fecha(s):
                 u = u.split("?")[0]
+                if lm and lm < DESDE: continue  # nota modificada por última vez antes de 2025: no puede ser de 2025 en adelante
                 if u not in conocidas and filtro(u):
                     conocidas.add(u); m = re.search(r"/(\d{4})/?(\d\d)/?(\d\d)/", u)
                     cand.append({"s": fuente, "u": u, "c": cat, "d": f"{m[1]}-{m[2]}-{m[3]}" if m else None})
