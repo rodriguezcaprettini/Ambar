@@ -127,9 +127,15 @@ if os.path.exists("data/puestos.csv") and os.path.getsize("data/puestos.csv") > 
     pu = pd.read_csv("data/puestos.csv")
     if len(pu):
         pu["m"] = pu.fecha.str[:7]
+        full = pu.copy()
         ult = pu.groupby(["m", "seg"]).fecha.max().reset_index()
         pu = pu.merge(ult, on=["m", "seg", "fecha"])
         PUE = [[r.m, r.fecha, r.seg, str(r.part).strip(), num(r.mes, 2), num(r.anio, 2), num(r.anio_usd, 2)] for r in pu.itertuples()]
+        # corte anterior al último (para calcular el volumen del día = diferencia de acumulados del año)
+        for seg, g in full.groupby("seg"):
+            fs = sorted(g.fecha.unique())
+            if len(fs) >= 2:
+                PUE += [["_prev", r.fecha, r.seg, str(r.part).strip(), num(r.mes, 2), num(r.anio, 2), num(r.anio_usd, 2)] for r in g[g.fecha == fs[-2]].itertuples()]
 print(f"Puestos de bolsa: {len(PUE)} filas")
 
 D = {"prelim": prelim, "fecha": fechas[-1], "fechas": fechas, "fx": fx, "ruedas": ruedas, "meses": meses, "ins": ins, "s": S,
