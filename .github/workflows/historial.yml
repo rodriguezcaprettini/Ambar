@@ -12,11 +12,11 @@ on:
         required: true
         default: "2026-11-05"
       modo:
-        description: "todo = secundario y primario · primario = solo recargar mercado primario y volumen por puesto"
+        description: "todo = secundario y primario · primario = solo recargar mercado primario y volumen por puesto · noticias = archivo de titulares desde 2025"
         required: true
         default: "todo"
         type: choice
-        options: [todo, primario]
+        options: [todo, primario, noticias]
 permissions:
   contents: read
 concurrency: datos
@@ -31,12 +31,14 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with: { python-version: "3.12" }
-      - run: pip install requests pandas openpyxl
+      - run: pip install requests pandas openpyxl beautifulsoup4
       - name: Traer estado desde Supabase
         run: python scripts/supa.py bajar-estado
       - name: Descargar boletines
         run: |
-          if [ "${{ inputs.modo }}" = "primario" ]; then
+          if [ "${{ inputs.modo }}" = "noticias" ]; then
+            python scripts/noticias.py --historial
+          elif [ "${{ inputs.modo }}" = "primario" ]; then
             python scripts/boletin.py --primario ${{ inputs.desde }} ${{ inputs.hasta }}
           else
             python scripts/boletin.py ${{ inputs.desde }} ${{ inputs.hasta }}

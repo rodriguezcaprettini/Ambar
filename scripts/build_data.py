@@ -144,7 +144,14 @@ try:
     noticias = json.load(open("data/noticias.json", encoding="utf-8"))
 except FileNotFoundError:
     noticias = []
+# Archivo completo de noticias aparte (se baja solo al abrir NEWS); en data.json van las 25 más recientes de cada fuente
+with open("data/out/noticias.json", "w", encoding="utf-8") as fh:
+    json.dump(noticias, fh, ensure_ascii=False, separators=(",", ":"))
+_c, recientes = {}, []
+for n in sorted(noticias, key=lambda n: (n.get("d") or "", n.get("v") or ""), reverse=True):
+    _c[n["s"]] = _c.get(n["s"], 0) + 1
+    if _c[n["s"]] <= 25: recientes.append(n)
 with open("data/out/data.json", "w", encoding="utf-8") as fh:
-    json.dump({"D": D, "NEWS": noticias}, fh, ensure_ascii=False, separators=(",", ":"), default=float)
+    json.dump({"D": D, "NEWS": recientes}, fh, ensure_ascii=False, separators=(",", ":"), default=float)
 kb = os.path.getsize("data/out/data.json") / 1024
 print(f"data.json: {kb:,.0f} KB · {len(fechas)} sesiones ({fechas[0]} a {fechas[-1]}) · {len(ins)} títulos · {len(S)} filas de resumen · {len(meses)} archivos mensuales · {len(noticias)} noticias · preliminares: {list(prelim) or 'ninguno'}")

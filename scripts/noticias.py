@@ -4,16 +4,19 @@ Se ejecuta desde la raíz del repositorio. Guarda data/noticias.json.
 Fuentes: Diario Libre, Diario Financiero, Revista Mercado, elDinero, Listín Diario, Hoy, El Día,
 Banco Central (noticias y comunicados de política monetaria).
 Si una fuente no publica la fecha en el enlace, se usa la fecha en que Ámbar vio el titular por primera vez.
+Uso:  python scripts/noticias.py              -> corrida diaria (portadas de cada medio)
+      python scripts/noticias.py --historial  -> recorre páginas anteriores (archivo desde 2025)
 Requisitos: pip install requests beautifulsoup4
 """
-import datetime as dt, json, re, sys
+import datetime as dt, json, re, sys, time
 from zoneinfo import ZoneInfo
 import requests
 from bs4 import BeautifulSoup
 
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"}
 HOY = dt.datetime.now(ZoneInfo("America/Santo_Domingo")).date().isoformat()
-POR_FUENTE = 80  # titulares guardados por fuente (para que una fuente muy activa no desplace a las demás)
+POR_FUENTE = 4000  # titulares guardados por fuente
+DESDE = "2025-01-01"  # el archivo histórico llega hasta aquí
 CAT = {"finanzas": "Finanzas", "negocios": "Negocios", "energia": "Energía", "consumo": "Consumo",
        "empleo": "Empleo", "economia": "Economía", "opinion": "Opinión", "banca": "Banca",
        "noticias-nacionales": "Nacionales", "mercado-de-valores": "Mercado de valores",
@@ -31,71 +34,71 @@ def anclas(url):
     for a in BeautifulSoup(html, "html.parser").find_all("a", href=True):
         yield a["href"].split("?")[0].split("#")[0], limpio(a.get_text(" "))
 
-def diario_libre():
+def diario_libre(url="https://www.diariolibre.com/economia"):
     out = []
-    for u, t in anclas("https://www.diariolibre.com/economia"):
+    for u, t in anclas(url):
         if u.startswith("/"): u = "https://www.diariolibre.com" + u
         m = re.search(r"diariolibre\.com/economia/([a-z-]+)/(\d{4})/(\d\d)/(\d\d)/[^/]+/\d+", u)
         if m and len(t) > 25:
             out.append({"s": "Diario Libre", "t": t, "u": u, "c": CAT.get(m[1], "Economía"), "d": f"{m[2]}-{m[3]}-{m[4]}"})
     return out
 
-def diario_financiero():
+def diario_financiero(url="https://diariofinanciero.do/"):
     out = []
-    for u, t in anclas("https://diariofinanciero.do/"):
+    for u, t in anclas(url):
         m = re.match(r"https://diariofinanciero\.do/([a-z-]+)/(?:[a-z-]+/)?[a-z0-9-]{12,}/?$", u)
-        if not m or len(t) < 25 or m[1] in EXCLUIR_DF or m[1] in ("category", "tag", "author") \
+        if not m or len(t) < 25 or m[1] in EXCLUIR_DF or m[1] in ("category", "tag", "author", "herramientas-financieras", "page") \
                 or re.match(r"(Ranking|Comparador|Calculadora|Guía|Precio del dólar)\b", t, re.I):  # herramientas fijas del sitio
             continue
         out.append({"s": "Diario Financiero", "t": t, "u": u, "c": CAT.get(m[1], "Economía"), "d": None})
     return out
 
-def revista_mercado():
+def revista_mercado(url="https://revistamercado.do/"):
     out = []
-    for u, t in anclas("https://revistamercado.do/"):
+    for u, t in anclas(url):
         m = re.match(r"https://revistamercado\.do/(empresas|money-invest|business|market-brief|actualidad)/(?:([a-z-]+)/)?[a-z0-9-]{12,}/?$", u)
         if m and len(t) > 25 and m[2] != "daily-news":  # "daily-news" mezcla notas no económicas (sismos, premios)
             out.append({"s": "Revista Mercado", "t": t, "u": u, "c": CAT.get(m[1], "Economía"), "d": None})
     return out
 
-def el_dinero():
+def el_dinero(url="https://eldinero.com.do/"):
     out = []
-    for u, t in anclas("https://eldinero.com.do/"):
+    for u, t in anclas(url):
         if re.match(r"https://eldinero\.com\.do/\d{5,}/[a-z0-9-]{12,}/?$", u) and len(t) > 25:
             out.append({"s": "elDinero", "t": t, "u": u, "c": "Economía", "d": None})
     return out
 
-def listin():
+def listin(url="https://listindiario.com/economia"):
     out = []
-    for u, t in anclas("https://listindiario.com/economia"):
+    for u, t in anclas(url):
         if u.startswith("/"): u = "https://listindiario.com" + u
         m = re.match(r"https://listindiario\.com/economia/(?:([a-z-]+)/)?(\d{4})(\d\d)(\d\d)/[^/]+_\d+\.html$", u)
         if m and len(t) > 25:
             out.append({"s": "Listín Diario", "t": t, "u": u, "c": CAT.get(m[1] or "economia", "Economía"), "d": f"{m[2]}-{m[3]}-{m[4]}"})
     return out
 
-def hoy():
+def hoy(url="https://hoy.com.do/economia/"):
     out = []
-    for u, t in anclas("https://hoy.com.do/economia/"):
+    for u, t in anclas(url):
         if re.match(r"https://hoy\.com\.do/economia/[a-z0-9-]{10,}_\d+\.html$", u) and len(t) > 25:
             out.append({"s": "Hoy", "t": t, "u": u, "c": "Economía", "d": None})
     return out
 
-def el_dia():
+def el_dia(url="https://eldia.com.do/secciones/economicas/"):
     out = []
-    for u, t in anclas("https://eldia.com.do/secciones/economicas/"):
+    for u, t in anclas(url):
         m = re.match(r"https://eldia\.com\.do/([a-z0-9-]+)/?$", u)
         if m and m[1].count("-") >= 4 and len(t) > 25 and not m[1].startswith(("secciones", "author", "tag", "category")):
             out.append({"s": "El Día", "t": t, "u": u, "c": "Economía", "d": None})
     return out
 
-def banco_central():
+def banco_central(pagina=0, tam=15):
     out = []
     for cc, cat in (("CAT-037", "Banco Central"), ("CAT-036", "Política monetaria")):
         r = requests.post("https://www.bancentral.gov.do/Home/GetArticles", timeout=60,
                           headers={**UA, "X-Requested-With": "XMLHttpRequest"},
                           data={"categoryCode": cc, "languageName": "es", "requestIsFromPortal": "true",
-                                "filter": "", "skipCount": 0, "maxResultCount": 15})
+                                "filter": "", "skipCount": pagina, "maxResultCount": tam})
         for it in r.json()["result"]["items"]:
             f = (it.get("auxiliarDatetime1") or "")[:10]
             if not f or f.startswith("0001"): f = (it.get("creationTime") or "")[:10] or None
@@ -105,6 +108,60 @@ def banco_central():
 
 FUENTES = (diario_libre, diario_financiero, revista_mercado, el_dinero, listin, hoy, el_dia, banco_central)
 
+def fecha_articulo(u):
+    """Fecha de publicación leída de la propia nota (metadatos estándar de los periódicos)."""
+    try:
+        h = requests.get(u, headers=UA, timeout=30).text[:400000]
+    except Exception:
+        return None
+    for rx in (r'property="article:published_time"\s+content="(\d{4}-\d\d-\d\d)', r'content="(\d{4}-\d\d-\d\d)[^"]*"\s+property="article:published_time"',
+               r'"datePublished"\s*:\s*"(\d{4}-\d\d-\d\d)', r'<time[^>]+datetime="(\d{4}-\d\d-\d\d)', r'itemprop="datePublished"[^>]*content="(\d{4}-\d\d-\d\d)'):
+        m = re.search(rx, h)
+        if m: return m[1]
+    return None
+
+# Páginas anteriores de cada medio (las que tienen paginación estable)
+PAGINAS = [
+    (diario_financiero, lambda n: f"https://diariofinanciero.do/category/economia/page/{n}/", 400),
+    (revista_mercado, lambda n: f"https://revistamercado.do/category/empresas/page/{n}/", 400),
+    (revista_mercado, lambda n: f"https://revistamercado.do/category/money-invest/page/{n}/", 400),
+    (listin, lambda n: f"https://listindiario.com/economia/{n}", 1500),
+    (hoy, lambda n: f"https://hoy.com.do/economia/{n}/", 1000),
+]
+
+def historial(conocidas):
+    """Recorre páginas anteriores hasta llegar a 2025 (o hasta que una página no traiga nada nuevo)."""
+    res = []
+    for fn, url, maxp in PAGINAS:
+        vacias = 0
+        for n in range(2, maxp + 1):
+            try:
+                L = [x for x in fn(url(n)) if x["u"] not in conocidas]
+            except Exception as e:
+                print(f"{url(n)}: ERROR {e}", file=sys.stderr); break
+            # sin fecha en el enlace: se lee la fecha de la primera nota de la página y se aplica a toda la página
+            # (las páginas van de la más nueva a la más vieja, así que el margen es de uno o dos días)
+            f0 = None
+            if any(not x.get("d") for x in L):
+                f0 = fecha_articulo(L[-1]["u"]); time.sleep(0.3)
+            for x in L:
+                conocidas.add(x["u"])
+                if not x.get("d"): x["d"] = f0
+            res += L
+            fechas = [x["d"] for x in L if x.get("d")]
+            print(f"{url(n)}: {len(L)} nuevos · {min(fechas) if fechas else '-'}")
+            vacias = vacias + 1 if not L else 0
+            if vacias >= 3 or (fechas and max(fechas) < DESDE): break
+            time.sleep(1)
+    for pg in range(0, 40):  # Banco Central: API paginada
+        L = [x for x in banco_central(pg, 50) if x["u"] not in conocidas]
+        for x in L: conocidas.add(x["u"])
+        res += L
+        fechas = [x["d"] for x in L if x.get("d")]
+        print(f"Banco Central página {pg}: {len(L)} · {min(fechas) if fechas else '-'}")
+        if not L or (fechas and max(fechas) < DESDE): break
+    return res
+
 def main():
     try:
         viejas = json.load(open("data/noticias.json", encoding="utf-8"))
@@ -112,11 +169,18 @@ def main():
         viejas = []
     previas = {n["u"]: n for n in viejas}
     nuevas = []
+    if "--historial" in sys.argv:
+        nuevas += historial({n["u"] for n in viejas})
     for fuente in FUENTES:
         try:
             n = fuente(); nuevas += n; print(f"{fuente.__name__}: {len(n)} titulares")
         except Exception as e:  # si una fuente falla, no detiene el resto
             print(f"{fuente.__name__}: ERROR {e}", file=sys.stderr)
+    sin_fecha = [n for n in nuevas if not n.get("d") and n["u"] not in previas]
+    for n in sin_fecha[:150]:  # se consulta la fecha en la propia nota (máx. 150 por corrida)
+        n["d"] = fecha_articulo(n["u"]); time.sleep(0.2)
+    print(f"Fechas leídas de la nota: {sum(1 for n in sin_fecha[:150] if n.get('d'))} de {len(sin_fecha[:150])}")
+    nuevas = [n for n in nuevas if not n.get("d") or n["d"] >= DESDE]
     vistos, todas = set(), []
     for n in nuevas + viejas:  # sin duplicados por enlace
         if n["u"] in vistos: continue
