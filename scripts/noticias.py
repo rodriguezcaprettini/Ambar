@@ -120,7 +120,8 @@ def a_rd(s):
     try:
         x = dt.datetime.fromisoformat(s.replace("Z", "+00:00"))
         if x.tzinfo: x = x.astimezone(RDZ)
-        return x.date().isoformat(), x.strftime("%H:%M")
+        hh = x.strftime("%H:%M")
+        return x.date().isoformat(), (None if hh == "00:00" else hh)  # 00:00 = el medio solo publica la fecha
     except ValueError:
         return s[:10], None
 
@@ -237,6 +238,9 @@ def archivo(conocidas, maximo):
         print(f"Archivo {fuente}: {len(cand) - n0} notas nuevas en los sitemaps")
     cand = [c for c in cand if not c["d"] or c["d"] >= DESDE]
     cand.sort(key=lambda c: c["d"] or "9999", reverse=True)
+    por = {}
+    for c in cand: por.setdefault(c["s"], []).append(c)
+    cand = [c for grupo in zip(*[g + [None] * (max(map(len, por.values())) - len(g)) for g in por.values()]) for c in grupo if c] if por else []
     out = []
     from concurrent.futures import ThreadPoolExecutor
     lote = cand[:maximo]
@@ -278,7 +282,7 @@ def main():
     print(f"Fecha/hora leídas de la nota: {sum(1 for n in sin_hora[:150] if n.get('h'))} con hora de {len(sin_hora[:150])}")
     # titulares ya guardados de los últimos 3 días que aún no tienen hora (una sola vez por titular)
     lim = (dt.date.fromisoformat(HOY) - dt.timedelta(days=3)).isoformat()
-    pend = [n for n in viejas if (n.get("d") or "") >= lim and not n.get("h") and not n.get("ht")][:120]
+    pend = [n for n in viejas if (n.get("d") or "") >= lim and not n.get("h") and not n.get("ht")][:300]
     for n in pend:
         f, hr = fecha_articulo(n["u"], True); time.sleep(0.2); n["ht"] = 1
         if f and n.get("d") in (None, f, n.get("v")): n["d"], n["h"] = f, hr
@@ -290,7 +294,9 @@ def main():
         vistos.add(n["u"])
         p = previas.get(n["u"])
         n["v"] = (p or {}).get("v") or n.get("v") or (None if p else HOY)  # primera vez que Ámbar vio el titular
-        if not n.get("d"): n["d"] = (p or {}).get("d") or n["v"]  # sin fecha publicada: se usa la primera vez visto
+        if not n.get("d"): n["d"] = (p or {}).get("d") or n["v"]
+        for k in ("h", "ht"):  # conservar la hora ya leída (la portada vuelve a traer el titular sin hora)
+            if p and p.get(k) and not n.get(k): n[k] = p[k]  # sin fecha publicada: se usa la primera vez visto
         todas.append(n)
     todas.sort(key=lambda n: (n.get("d") or "", n.get("h") or "", n.get("v") or ""), reverse=True)
     cuenta, final = {}, []

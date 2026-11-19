@@ -394,7 +394,7 @@ function crvPop(){const P=$("cpop"),C=crvCand(),on=i=>CRV.sel?CRV.sel.includes(i
  $("cpr").onclick=()=>{CRV.sel=null;saveSel();curva();crvPop()};
  P.onclick=e=>e.stopPropagation();document.addEventListener("click",function h(){P.hidden=true;document.removeEventListener("click",h)},{once:true})}
 // Titulares recientes intercalando fuentes (ronda por fuente, de más reciente a más antiguo)
-const nfd=n=>fd(n.d)+(n.h?" · "+n.h:""),nkey=n=>(n.d||"")+(n.h||"")+(n.v||"");
+const nfd=n=>fd(n.d)+(n.h&&n.h!="00:00"?" · "+n.h:""),nkey=n=>(n.d||"")+(n.h||"")+(n.v||"");
 function newsMix(n){const S={};[...NEWS].sort((a,b)=>nkey(b)<nkey(a)?-1:1).forEach(x=>(S[x.s]=S[x.s]||[]).push(x));
  const ks=Object.keys(S).sort((a,b)=>((S[b][0].d||"")<(S[a][0].d||"")?-1:1)),out=[];let i=0;while(out.length<n&&ks.some(k=>S[k][i])){ks.forEach(k=>{if(S[k][i]&&out.length<n)out.push(S[k][i])});i++}
  return out.sort((a,b)=>nkey(b)<nkey(a)?-1:nkey(b)>nkey(a)?1:0)}
