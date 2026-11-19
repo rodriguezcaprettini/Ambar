@@ -246,8 +246,11 @@ main.dash{grid-template-rows:auto minmax(0,1fr)!important}
 .flt{flex-wrap:wrap;row-gap:8px}.flt input[type=date]{padding:5px 6px;font:12px Inter}.lk{color:#c7861f;cursor:pointer;font-size:12px}
 .mseg{display:flex;align-items:center;gap:10px;margin-bottom:12px;font:500 11px var(--mono);letter-spacing:.6px;text-transform:uppercase;color:#6b7789}.mseg .cnt{text-transform:none;letter-spacing:0;font-family:Inter}
 .sub{display:block;font:500 11px var(--mono);color:#6b7789;margin-top:2px}
-.dgrid.d2{grid-template-columns:1.55fr 1fr!important;grid-template-rows:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)!important;grid-template-areas:"crv pue" "crv top" "news mov"}
-.d2 .crv{grid-area:crv}.d2 .dpue{grid-area:pue}.d2 .dtop{grid-area:top}.d2 .dmov{grid-area:mov}.d2 .dnews{grid-area:news}
+.dgrid.d2{grid-template-columns:1.6fr 1fr!important;grid-template-rows:minmax(0,1fr)!important}
+.dcol{display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0}.dcol>.pn{min-height:0}
+.d2 .crv{flex:3.2 1 0}.d2 .dnews{flex:1 1 0}.d2 .dpue{flex:1.45 1 0}.d2 .dtop{flex:1 1 0}.d2 .dmov{flex:1 1 0}
+.d2 .dpue td,.d2 .dpue th{font-size:13.5px!important;padding:6px 8px!important}.d2 .dpue th{font-size:11px!important}.d2 .dpue .seg button{font-size:12.5px;padding:5px 11px}.d2 .dpue td:nth-child(2){font-weight:600;color:#14233b}
+.d2 .dnews .nl1{padding:4px 2px;font-size:12px}
 .nl1{display:flex;gap:10px;align-items:baseline;padding:5px 2px;border-bottom:1px solid var(--ln);text-decoration:none;font-size:12.5px;min-width:0}
 .nl1:hover .nt1{color:#c7861f}.nt1{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#14233b;font-weight:500}.nl1 em{flex:none;font:400 10.5px var(--mono);color:#6b7789;font-style:normal}
 .dnews h2 .more{font:500 11px Inter;letter-spacing:0;text-transform:none}
@@ -342,6 +345,7 @@ function mercado(){const m=$("main"),T=BYD[LAST],P=BYD[LAST-1]||[];
  const mov=RF.concat(RV).filter(x=>x.ui==LAST&&x.hist.length>1).map(x=>({x,c:chg(x)})).filter(o=>o.c!=null&&Math.abs(o.c)>=0.005).sort((a,b)=>Math.abs(b.c)-Math.abs(a.c));
  m.innerHTML=`<div class=kstrip>${["monto","rf","rv","ops","tit"].map(card).join("")}<div class=ks0>vs. ${fd(D.fechas[LAST-1])}${isPre(D.fecha)?' · <u class=pb>Preliminar</u>':''}</div></div>
  <div class="dgrid d2">
+  <div class=dcol>
   <div class="pn crv"><h2>Curva soberana · rendimiento vs. plazo<button class=xlb id=cxl>⤓ Excel</button></h2>
    <div class=cf>Emisor <span class=seg id=ce><button data-v="BCRD"><i class=dot style="background:#14233b"></i>Banco Central</button><button data-v="SEH"><i class=dot style="background:#e09a2c"></i>Hacienda</button></span>
     ${seg("cm",[["DOP","DOP"],["USD","USD"]],CRV.mon)}
@@ -350,10 +354,12 @@ function mercado(){const m=$("main"),T=BYD[LAST],P=BYD[LAST-1]||[];
     <button class=selb id=csel>Elegir bonos…</button><label class=chk><input type=checkbox id=cfit ${CRV.fit?"checked":""}> Tendencia</label><span id=cinfo class=cnt></span></div>
    <div id=cpop class=cpop hidden></div>
    <div class=chartbox><canvas id=cv></canvas></div></div>
+  <div class="pn dnews"><h2>Noticias <a class=more onclick="go('noticias')">Ver todas →</a></h2><div class=body>${newsMix(30).map(n=>`<a class=nl1 href="${n.u}" target="_blank" rel="noopener" title="${(n.t||"").replace(/"/g,"&quot;")}"><span class=nt1>${n.t}</span><em>${n.s}${n.d?" · "+fd(n.d):""}</em></a>`).join("")||'<p class=src>Sin noticias.</p>'}</div></div>
+  </div><div class=dcol>
   <div class="pn dpue"><h2>Volumen por puesto de bolsa</h2><div class=cf>${seg("dpp",[["d","Hoy"],["m","Mes"],["y","Año"]],DPU.per)} ${seg("dps",[["all","Todos"],["rf","RF"],["rv","RV"]],DPU.seg)}<span id=dpinfo class=cnt></span></div><div class=body id=dpt></div></div>
-  <div class="pn dnews"><h2>Noticias <a class=more onclick="go('noticias')">Ver todas →</a></h2><div class=body>${[...NEWS].sort((a,b)=>(b.d||"")<(a.d||"")?-1:1).slice(0,30).map(n=>`<a class=nl1 href="${n.u}" target="_blank" rel="noopener" title="${(n.t||"").replace(/"/g,"&quot;")}"><span class=nt1>${n.t}</span><em>${n.s}${n.d?" · "+fd(n.d):""}</em></a>`).join("")||'<p class=src>Sin noticias.</p>'}</div></div>
   <div class="pn dtop"><h2>Más negociados hoy</h2><div class=body>${tbl(["Título","Precio","Rend. %","Monto RD$ MM"],hoy.map(({x,m})=>[x.titulo,f(x.precio,4),f(x.rend,3),MM(m)]),[0],hoy.map(h=>h.x.isin))}</div></div>
   <div class="pn dmov"><h2>Mayores variaciones de precio</h2><div class=body>${mov.length?tbl(["Título","Precio","Var. vs. anterior"],mov.map(o=>[o.x.titulo,f(o.x.precio,4),chgS(o.c)]),[0],mov.map(o=>o.x.isin)):'<p class=src>Sin variaciones hoy.</p>'}</div></div>
+  </div>
  </div>`;
  dpue();segBind("dpp",v=>{DPU.per=v;dpue()});segBind("dps",v=>{DPU.seg=v;dpue()});
  document.querySelectorAll("#ce button").forEach(b=>{b.classList.toggle("on",CRV.emi.includes(b.dataset.v));b.onclick=()=>{const v=b.dataset.v;CRV.emi=CRV.emi.includes(v)?CRV.emi.filter(e=>e!=v):[...CRV.emi,v];if(!CRV.emi.length)CRV.emi=[v];b.parentElement.querySelectorAll("button").forEach(x=>x.classList.toggle("on",CRV.emi.includes(x.dataset.v)));curva()}});
@@ -372,6 +378,10 @@ function crvPop(){const P=$("cpop"),C=crvCand(),on=i=>CRV.sel?CRV.sel.includes(i
  $("cpn").onclick=()=>{P.querySelectorAll("input").forEach(i=>i.checked=false);upd()};
  $("cpr").onclick=()=>{CRV.sel=null;saveSel();curva();crvPop()};
  P.onclick=e=>e.stopPropagation();document.addEventListener("click",function h(){P.hidden=true;document.removeEventListener("click",h)},{once:true})}
+// Titulares recientes intercalando fuentes (ronda por fuente, de más reciente a más antiguo)
+function newsMix(n){const S={};[...NEWS].sort((a,b)=>((b.d||"")+(b.v||""))<((a.d||"")+(a.v||""))?-1:1).forEach(x=>(S[x.s]=S[x.s]||[]).push(x));
+ const ks=Object.keys(S).sort((a,b)=>((S[b][0].d||"")<(S[a][0].d||"")?-1:1)),out=[];let i=0;while(out.length<n&&ks.some(k=>S[k][i])){ks.forEach(k=>{if(S[k][i]&&out.length<n)out.push(S[k][i])});i++}
+ return out.sort((a,b)=>(b.d||"")<(a.d||"")?-1:(b.d||"")>(a.d||"")?1:0)}
 let crvChart=null,DPU={per:"d",seg:"all"};
 // Volumen por puesto agregado: secundario bursátil + primario (RF y/o RV). Se excluye el registro OTC (incluye bancos, no es negociación en bolsa).
 function dpue(){const el=$("dpt");if(!el)return;if(!PUE.length){el.innerHTML='<p class=src>Datos por puesto en carga.</p>';return}
@@ -557,9 +567,9 @@ function titulo(isin){const x=BYI[isin],m=$("main");if(!x){m.innerHTML=backBtn+"
  m.querySelector(".pn").xl=()=>xlsx("Ambar_"+x.titulo+"_"+D.fecha,[["Historial",[["Fecha","Precio","Rendimiento %","Operaciones","Monto RD$",...(x.moneda=="USD"?["Monto US$","Tasa DOP/USD"]:[]),"Preliminar"],...[...x.hist].reverse().map(h=>[h.f,h.p,h.y??"",h.n,h.m,...(x.moneda=="USD"?[h.mu!=null?+h.mu.toFixed(2):"",D.fx[h.i]]:[]),isPre(h.f)?"Sí":""])]],["Métricas",[["Métrica","Valor"],...[...m.querySelectorAll(".k>div")].map(d=>[tr(d.firstChild.textContent.trim()),d.querySelector("b").textContent]),["ISIN",x.isin],["Fuente","BVRD, Boletín Consolidado; cálculos de Ámbar"]]]])}
 const nItem=n=>`<a class=ni href="${n.u}" target="_blank" rel="noopener"><span class=nt>${n.t}</span><span class=nm>${n.s} · ${n.c}${n.d?" · "+fd(n.d):""}</span></a>`;
 function noticias(){const m=$("main"),cats=[...new Set(NEWS.map(n=>n.c))].sort();
- m.innerHTML=`<div class=pn><h2>Noticias económicas</h2><div class=ctl>Fuente ${seg("ns",[["","Todas"],["Diario Libre","Diario Libre"],["Diario Financiero","Diario Financiero"]],"")} Tema <select id=nc><option value="">Todos</option>${cats.map(c=>`<option>${c}</option>`).join("")}</select></div><div id=nl class=nlist></div>
- <div class=src>Titulares y enlaces a las publicaciones originales de <a href="https://diariolibre.com/economia" target="_blank">Diario Libre</a> y <a href="https://diariofinanciero.do/" target="_blank">Diario Financiero</a>, recopilados automáticamente cada día hábil. Para leer la noticia completa, haz clic en el titular. Las fechas de Diario Financiero solo aparecen cuando el titular o el enlace las incluyen.</div></div>`;
- const r=()=>{const s=segVal("ns"),c=$("nc").value;$("nl").innerHTML=NEWS.filter(n=>(!s||n.s==s)&&(!c||n.c==c)).map(nItem).join("")};segBind("ns",r);$("nc").onchange=r;r()}
+ m.innerHTML=`<div class=pn><h2>Noticias económicas</h2><div class=ctl>Fuente <select id=nsrc><option value="">Todas</option>${[...new Set(NEWS.map(n=>n.s))].sort().map(s=>`<option>${s}</option>`).join("")}</select> Tema <select id=nc><option value="">Todos</option>${cats.map(c=>`<option>${c}</option>`).join("")}</select></div><div id=nl class=nlist></div>
+ <div class=src>Titulares y enlaces a las publicaciones originales de Diario Libre, Diario Financiero, Revista Mercado, elDinero, Listín Diario, Hoy, El Día y el Banco Central (noticias y comunicados de política monetaria), recopilados automáticamente cada día hábil. Para leer la noticia completa, haz clic en el titular. Si el medio no publica la fecha en el enlace, se muestra la fecha en que Ámbar vio el titular por primera vez.</div></div>`;
+ const r=()=>{const s=$("nsrc").value,c=$("nc").value;$("nl").innerHTML=(s?NEWS.filter(n=>n.s==s):newsMix(NEWS.length)).filter(n=>!c||n.c==c).map(nItem).join("")};$("nsrc").onchange=r;$("nc").onchange=r;r()}
 // ---------- análisis de renta fija ----------
 function bondAn(b){const y=b.rend/100,c=b.cupon,fr=b.frec==4?4:b.frec==7?0:2,T=(new Date(b.venc)-new Date(D.fecha))/3.156e10;if(!(T>0))return null;
  if(!fr){const P=100/(1+y)**T;return {dirty:P,md:T/(1+y),mac:T,cx:T*(T+1)/(1+y)**2,T,fr:0}}
