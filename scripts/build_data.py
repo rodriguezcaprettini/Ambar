@@ -120,8 +120,20 @@ if os.path.exists("data/primario.csv") and os.path.getsize("data/primario.csv") 
                 num(r.cupon, 4), r.modo, r.rueda, num(r.precio_r), num(r.rend_r, 4), num(r.monto, 2), num(r.monto_dop, 2), int(r.n)] for r in g.itertuples()]
 print(f"Mercado primario: {len(PRI)} filas")
 
+# Volumen por puesto de bolsa: se guarda el último corte de cada mes (acumulado del mes y del año)
+PUE_COLS = ["m", "fecha", "seg", "part", "mes", "anio", "anio_usd"]
+PUE = []
+if os.path.exists("data/puestos.csv") and os.path.getsize("data/puestos.csv") > 10:
+    pu = pd.read_csv("data/puestos.csv")
+    if len(pu):
+        pu["m"] = pu.fecha.str[:7]
+        ult = pu.groupby(["m", "seg"]).fecha.max().reset_index()
+        pu = pu.merge(ult, on=["m", "seg", "fecha"])
+        PUE = [[r.m, r.fecha, r.seg, str(r.part).strip(), num(r.mes, 2), num(r.anio, 2), num(r.anio_usd, 2)] for r in pu.itertuples()]
+print(f"Puestos de bolsa: {len(PUE)} filas")
+
 D = {"prelim": prelim, "fecha": fechas[-1], "fechas": fechas, "fx": fx, "ruedas": ruedas, "meses": meses, "ins": ins, "s": S,
-     "cat": cat[cols].replace({np.nan: None}).to_dict("records"), "pri": {"cols": PRI_COLS, "rows": PRI}}
+     "cat": cat[cols].replace({np.nan: None}).to_dict("records"), "pri": {"cols": PRI_COLS, "rows": PRI}, "pue": {"cols": PUE_COLS, "rows": PUE}}
 try:
     noticias = json.load(open("data/noticias.json", encoding="utf-8"))
 except FileNotFoundError:

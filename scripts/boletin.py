@@ -124,14 +124,60 @@ def solo_primario(desde, hasta):
                 r = requests.get(u, timeout=60, headers={"User-Agent": "Mozilla/5.0 (Ambar)"})
                 if r.status_code == 200 and r.content[:2] == b"PK":
                     try:
-                        p = primario(io.BytesIO(r.content), d); guardar_primario(p, d); n += 1
-                        print(f"{d}: {len(p)} operaciones de mercado primario")
+                        b = io.BytesIO(r.content)
+                        p = primario(b, d); guardar_primario(p, d)
+                        q = puestos(b, d); guardar_primario(q, d, "data/puestos.csv"); n += 1
+                        print(f"{d}: {len(p)} operaciones de mercado primario, {len(q)} filas por puesto")
                     except Exception as e:
                         print(f"{d}: error ({e})")
                     break
             time.sleep(1.5)
         d += dt.timedelta(days=1)
     print(f"Resumen: {n} boletines leídos para mercado primario")
+
+# Volumen por puesto de bolsa / participante (agregado, NO por título: el boletín no dice quién transó cada bono)
+PUESTOS = [("BB_RFMSVTPBolsa", "rf_sec"), ("BB_RFRegistro", "rf_reg"), ("BB_RFVTransPuestoBolsaMP", "rf_pri"),
+           ("BB_RVVTransPBolsa", "rv_sec"), ("BB_RVVTransPuestoBolsa", "rv_pri")]
+
+def _n(v):
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return 0.0
+
+def puestos(xls, fecha):
+    """Una fila por hoja y participante: acumulado del mes y del año en RD$ equivalentes."""
+    out = []
+    for hoja, seg in PUESTOS:
+        try:
+            raw = pd.read_excel(xls, sheet_name=hoja, header=None)
+        except ValueError:
+            continue
+        hi = next((i for i in range(len(raw)) if any(str(c).strip() in ("Participante", "Puesto de Bolsa") for c in raw.iloc[i])), None)
+        if hi is None: continue
+        H = {j: str(c).strip() for j, c in raw.iloc[hi].items() if pd.notna(c)}
+        cp = next(j for j, c in H.items() if c in ("Participante", "Puesto de Bolsa"))
+        cm = next((j for j, c in H.items() if "Mes" in c), None)
+        ca = max((j for j, c in H.items() if "Año" in c or "Acumulado Al" in c), default=None)
+        cu = [j for j, c in H.items() if c in ("Transado USD", "Total Transado USD")]
+        for i in range(hi + 1, len(raw)):
+            r = raw.iloc[i]; nom = r[cp]
+            if pd.isna(nom): continue
+            nom = str(nom).strip()
+            if not nom or nom.startswith("Total") or nom.startswith("Departamento") or nom.startswith("Nota"): break
+            out.append({"fecha": fecha.isoformat(), "seg": seg, "part": nom,
+                        "mes": _n(r[cm]) if cm is not None else 0.0, "anio": _n(r[ca]) if ca is not None else 0.0,
+                        "anio_usd": _n(r[cu[-1]]) if len(cu) > 1 else None})
+    try:
+        rk = pd.read_excel(xls, sheet_name="BB_RentaFijaVolumenTransadoPues", header=None)
+        hi = next(i for i in range(len(rk)) if "Ranking" in [str(c).strip() for c in rk.iloc[i]])
+        for i in range(hi + 1, len(rk)):
+            v = [c for c in rk.iloc[i] if pd.notna(c)]
+            if len(v) < 3 or not str(v[0]).strip().isdigit(): continue
+            out.append({"fecha": fecha.isoformat(), "seg": "ranking", "part": str(v[1]).strip(), "mes": _n(v[2]), "anio": 0.0, "anio_usd": None})
+    except (ValueError, StopIteration):
+        pass
+    return pd.DataFrame(out)
 
 def emisiones(xls):
     rf = tablas(xls, "BB_RFEmisionesCorpV", "Código ISIN"); rf["mercado"] = "renta_fija"
@@ -195,6 +241,10 @@ def un_dia(fecha, archivo=None):
               "versiones": previo.get("versiones", 0) + 1}
     ops, precios = procesar(xls, fecha)
     os.makedirs("data", exist_ok=True)
+    try:
+        guardar_primario(puestos(xls, fecha), fecha, "data/puestos.csv")
+    except Exception as e:
+        print(f"{fecha}: no se pudo leer el volumen por puesto ({e})")
     try:
         guardar_primario(primario(xls, fecha), fecha)
     except Exception as e:

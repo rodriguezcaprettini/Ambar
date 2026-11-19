@@ -13,7 +13,7 @@ import requests
 URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
 KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
 BUCKET = "ambar-data"
-ESTADO = ["operaciones.csv", "primario.csv", "precios.csv", "emisiones.csv", "emisiones_fecha.txt", "noticias.json",
+ESTADO = ["operaciones.csv", "primario.csv", "puestos.csv", "precios.csv", "emisiones.csv", "emisiones_fecha.txt", "noticias.json",
           "descargas.json", "publicacion.json", "calendario_red.txt"]
 
 def headers(extra=None, bearer=None):

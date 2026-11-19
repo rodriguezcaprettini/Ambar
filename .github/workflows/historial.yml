@@ -12,7 +12,7 @@ on:
         required: true
         default: "2026-11-05"
       modo:
-        description: "todo = secundario y primario · primario = solo recargar mercado primario"
+        description: "todo = secundario y primario · primario = solo recargar mercado primario y volumen por puesto"
         required: true
         default: "todo"
         type: choice
