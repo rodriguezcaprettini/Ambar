@@ -281,11 +281,13 @@ def main():
     except FileNotFoundError:
         viejas = []
     previas = {n["u"]: n for n in viejas}
-    nuevas = []
+    nuevas, de_archivo = [], set()
+    AHORA = dt.datetime.now(RDZ).strftime("%H:%M")  # hora en que el robot ve el titular (hora RD)
     if "--historial" in sys.argv:
         k = {n["u"] for n in viejas}
         nuevas += historial(k)
         nuevas += archivo(k, int(sys.argv[sys.argv.index("--historial") + 1]) if len(sys.argv) > sys.argv.index("--historial") + 1 else 6000)
+        de_archivo = {n["u"] for n in nuevas}  # del archivo histórico: la hora de captura no sirve como referencia
     for fuente in FUENTES:
         try:
             n = fuente(); nuevas += n; print(f"{fuente.__name__}: {len(n)} titulares")
@@ -315,6 +317,8 @@ def main():
         vistos.add(n["u"])
         p = previas.get(n["u"])
         n["v"] = (p or {}).get("v") or n.get("v") or (None if p else HOY)  # primera vez que Ámbar vio el titular
+        if p and p.get("vh"): n["vh"] = p["vh"]
+        elif not p and n["u"] not in de_archivo: n["vh"] = AHORA  # hora RD de esa primera vez
         if not n.get("d"): n["d"] = (p or {}).get("d") or n["v"]
         for k in ("h", "ht"):  # conservar la hora ya leída (la portada vuelve a traer el titular sin hora)
             if p and p.get(k) and not n.get(k): n[k] = p[k]  # sin fecha publicada: se usa la primera vez visto
