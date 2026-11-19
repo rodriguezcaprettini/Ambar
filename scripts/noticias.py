@@ -181,6 +181,7 @@ def el_brifin(url=None):
             out.append({"s": "El Brifin", "t": t, "u": u, "c": "Economía y finanzas", "d": None})
     return out
 
+EXCLUIR_U = ("elbrifin.com/brifeos-por", "elbrifin.com/para-entender-los-talibanes")
 MESES_C = {"ene": 1, "feb": 2, "mar": 3, "abr": 4, "may": 5, "jun": 6, "jul": 7, "ago": 8, "sep": 9, "oct": 10, "nov": 11, "dic": 12}
 
 def cevaldom(url="https://www.cevaldom.com/noticias/"):
@@ -436,7 +437,7 @@ def main():
     nuevas = [n for n in nuevas if not n.get("d") or n["d"] >= DESDE]
     vistos, todas = set(), []
     for n in nuevas + viejas:  # sin duplicados por enlace
-        if n["u"] in vistos or "/categoria/" in n["u"] or "/category/" in n["u"]: continue  # páginas de sección, no notas
+        if n["u"] in vistos or "/categoria/" in n["u"] or "/category/" in n["u"] or any(x in n["u"] for x in EXCLUIR_U): continue  # páginas de sección o notas descartadas
         vistos.add(n["u"])
         p = previas.get(n["u"])
         n["v"] = (p or {}).get("v") or n.get("v") or (None if p else HOY)  # primera vez que Ámbar vio el titular
