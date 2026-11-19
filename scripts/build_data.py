@@ -144,9 +144,8 @@ try:
     noticias = json.load(open("data/noticias.json", encoding="utf-8"))
 except FileNotFoundError:
     noticias = []
-# Archivo completo de noticias aparte (se baja solo al abrir NEWS); en data.json van las 25 más recientes de cada fuente
-with open("data/out/noticias.json", "w", encoding="utf-8") as fh:
-    json.dump(noticias, fh, ensure_ascii=False, separators=(",", ":"))
+# El archivo completo de noticias vive en la tabla public.noticias de Supabase; en data.json van las 25 más recientes de cada fuente
+if os.path.exists("data/out/noticias.json"): os.remove("data/out/noticias.json")
 _c, recientes = {}, []
 for n in sorted(noticias, key=lambda n: (n.get("d") or "", n.get("h") or "", n.get("v") or ""), reverse=True):
     _c[n["s"]] = _c.get(n["s"], 0) + 1

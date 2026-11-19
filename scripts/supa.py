@@ -47,6 +47,36 @@ def bajar_archivo(remoto, local):
         return False
     raise SystemExit(f"Error bajando {remoto}: {r.status_code} {r.text[:300]}")
 
+def rest(metodo, ruta, **kw):
+    """PostgREST (tablas). Con la clave secreta nueva basta 'apikey'; con la vieja (JWT) también va 'Authorization'."""
+    extra = kw.pop("extra", None)
+    r = requests.request(metodo, f"{URL}/rest/v1/{ruta}", headers=headers(extra), timeout=120, **kw)
+    if r.status_code in (400, 401, 403) and KEY.startswith("sb_") and "Authorization" not in headers():
+        r2 = requests.request(metodo, f"{URL}/rest/v1/{ruta}", headers=headers(extra, bearer=True), timeout=120, **kw)
+        if r2.status_code < 300: return r2
+    return r
+
+COLS_NOT = ("u", "s", "t", "d", "h", "vh", "v", "c")
+
+def subir_noticias(filas):
+    """Inserta o actualiza titulares en la tabla public.noticias (clave: el enlace)."""
+    filas = [{k: (f.get(k) or None) for k in COLS_NOT} for f in filas if f.get("u") and f.get("t")]
+    for i in range(0, len(filas), 1000):
+        r = rest("POST", "noticias?on_conflict=u", json=filas[i:i + 1000],
+                 extra={"Prefer": "resolution=merge-duplicates,return=minimal", "content-type": "application/json"})
+        if r.status_code >= 300:
+            raise SystemExit(f"Error subiendo noticias: {r.status_code} {r.text[:300]}")
+    return len(filas)
+
+def enlaces_noticias():
+    """Todos los enlaces ya guardados en la tabla (para no volver a descargar notas conocidas)."""
+    out, desde = set(), 0
+    while True:
+        r = rest("GET", f"noticias?select=u&order=u&offset={desde}&limit=1000")
+        if r.status_code >= 300: raise SystemExit(f"Error leyendo noticias: {r.status_code} {r.text[:300]}")
+        L = r.json(); out |= {x["u"] for x in L}; desde += len(L)
+        if len(L) < 1000: return out
+
 def main():
     if not URL or not KEY:
         raise SystemExit("Faltan los secretos SUPABASE_URL y/o SUPABASE_SERVICE_KEY en GitHub.")

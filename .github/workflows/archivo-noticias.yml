@@ -1,38 +1,29 @@
-# Tandas del archivo histórico de noticias (desde enero de 2025), de madrugada para no frenar al robot de cada 30 minutos.
-# Noche del 19 al 20 de noviembre de 2026: 11:00 pm, 1:00 am y 3:00 am hora RD.
-# El calendario de GitHub no admite año: si este archivo sigue aquí en noviembre de 2027 o después,
-# el robot arranca, ve que no es 2026 y termina sin hacer nada.
+# Archivo histórico de noticias económicas (todo lo que permita cada medio), por tandas de madrugada.
+# Escribe directo en la tabla public.noticias de Supabase, así que no frena al robot de cada 30 minutos.
+# Cada noche procesa hasta 15,000 notas; cuando ya no quedan pendientes, la corrida termina en pocos minutos.
 name: Archivo de noticias (madrugada)
 on:
   schedule:
-    - cron: "0 3,5,7 20 11 *"
-  workflow_dispatch: {}
+    - cron: "0 7 * * *"   # 3:00 am hora RD, todos los días
+  workflow_dispatch:
+    inputs:
+      maximo:
+        description: "Notas a procesar en esta tanda"
+        default: "15000"
 permissions:
   contents: read
-concurrency: datos
+concurrency: archivo-noticias
 jobs:
   archivo:
     runs-on: ubuntu-latest
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-    timeout-minutes: 110
+    timeout-minutes: 300
     steps:
-      - id: ano
-        name: ¿Es 2026? (o corrida manual)
-        run: echo "ok=$([ "$(date -u +%Y)" = "2026" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ] && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
-      - if: steps.ano.outputs.ok == '1'
-        uses: actions/checkout@v5
-      - if: steps.ano.outputs.ok == '1'
-        uses: actions/setup-python@v6
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with: { python-version: "3.12" }
-      - if: steps.ano.outputs.ok == '1'
-        run: pip install requests pandas openpyxl beautifulsoup4
-      - if: steps.ano.outputs.ok == '1'
-        run: python scripts/supa.py bajar-estado
-      - if: steps.ano.outputs.ok == '1'
-        run: python scripts/noticias.py --historial 6000
-      - if: steps.ano.outputs.ok == '1'
-        run: python scripts/build_data.py
-      - if: steps.ano.outputs.ok == '1'
-        run: python scripts/supa.py subir
+      - run: pip install requests beautifulsoup4
+      - run: mkdir -p data && python scripts/supa.py bajar-estado
+      - run: python scripts/noticias.py --archivo ${{ inputs.maximo || '15000' }}

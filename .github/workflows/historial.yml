@@ -37,7 +37,7 @@ jobs:
       - name: Descargar boletines
         run: |
           if [ "${{ inputs.modo }}" = "noticias" ]; then
-            python scripts/noticias.py --historial
+            python scripts/noticias.py --archivo 15000
           elif [ "${{ inputs.modo }}" = "primario" ]; then
             python scripts/boletin.py --primario ${{ inputs.desde }} ${{ inputs.hasta }}
           else

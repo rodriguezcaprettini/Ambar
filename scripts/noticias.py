@@ -8,15 +8,15 @@ Uso:  python scripts/noticias.py              -> corrida diaria (portadas de cad
       python scripts/noticias.py --historial  -> recorre páginas anteriores (archivo desde 2025)
 Requisitos: pip install requests beautifulsoup4
 """
-import datetime as dt, json, re, sys, time
+import datetime as dt, json, os, re, sys, time
 from zoneinfo import ZoneInfo
 import requests
 from bs4 import BeautifulSoup
 
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"}
 HOY = dt.datetime.now(ZoneInfo("America/Santo_Domingo")).date().isoformat()
-POR_FUENTE = 4000  # titulares guardados por fuente
-DESDE = "2025-01-01"  # el archivo histórico llega hasta aquí
+POR_FUENTE = 300   # titulares recientes por fuente en el estado del robot (el archivo completo vive en la tabla de Supabase)
+DESDE = "1990-01-01"  # el archivo histórico llega hasta donde lo permita cada medio
 CAT = {"finanzas": "Finanzas", "negocios": "Negocios", "energia": "Energía", "consumo": "Consumo",
        "empleo": "Empleo", "economia": "Economía", "opinion": "Opinión", "banca": "Banca",
        "noticias-nacionales": "Nacionales", "mercado-de-valores": "Mercado de valores",
@@ -222,10 +222,10 @@ def _indice(url, filtro):
     return [s for s in _locs(url) if filtro(s)]
 
 ARCHIVO = [  # (fuente, sitemaps, filtro de URL de nota económica, categoría)
-    ("Diario Libre", lambda: [f"https://www.diariolibre.com/sitemapnoticias/{m:%Y%m}" for m in _meses()],
+    ("Diario Libre", lambda: _indice("https://www.diariolibre.com/sitemap.xml", lambda s: "sitemapnoticias" in s),
      lambda u: re.search(r"diariolibre\.com/economia/[a-z-]+/(\d{4})/\d\d/\d\d/", u), "Economía"),
     # Listín Diario no publica sitemaps de noticias posteriores a mayo de 2023: su archivo solo llega hasta donde llega su portada
-    ("Hoy", lambda: _indice("https://hoy.com.do/sitemap-index.xml", lambda s: re.search(r"sitemap-noticias-20(2[5-9])\d\d", s)),
+    ("Hoy", lambda: _indice("https://hoy.com.do/sitemap-index.xml", lambda s: "sitemap-noticias-" in s),
      lambda u: re.search(r"hoy\.com\.do/economia/[a-z0-9-]{10,}_\d+\.html", u), "Economía"),
     ("Diario Financiero", lambda: _indice("https://diariofinanciero.do/sitemap_index.xml", lambda s: "post-sitemap" in s),
      lambda u: (m := re.match(r"https://diariofinanciero\.do/([a-z-]+)/[a-z0-9-]{12,}/?$", u)) and m[1] not in EXCLUIR_DF + ("herramientas-financieras",), "Economía"),
@@ -265,7 +265,7 @@ def archivo(conocidas, maximo):
     out = []
     from concurrent.futures import ThreadPoolExecutor
     lote = cand[:maximo]
-    with ThreadPoolExecutor(max_workers=6) as ex:  # 6 descargas a la vez (repartidas entre 5 medios)
+    with ThreadPoolExecutor(max_workers=8) as ex:  # 6 descargas a la vez (repartidas entre 5 medios)
         for i, (c, (t, (f, hr))) in enumerate(zip(lote, ex.map(lambda c: nota(c["u"]), lote))):
             if t and len(t) > 20:
                 c["t"] = t
@@ -275,7 +275,23 @@ def archivo(conocidas, maximo):
     print(f"Archivo: {len(out)} titulares agregados ({max(0, len(cand) - maximo)} pendientes para la próxima corrida)")
     return out
 
+def solo_archivo(maximo):
+    """Tanda del archivo histórico: va directo a la tabla de Supabase (no toca el estado del robot de 30 minutos)."""
+    import supa
+    k = supa.enlaces_noticias()
+    try:
+        k |= {n["u"] for n in json.load(open("data/noticias.json", encoding="utf-8"))}
+    except FileNotFoundError:
+        pass
+    print(f"Titulares ya guardados en la tabla: {len(k)}")
+    res = historial(k) + archivo(k, maximo)
+    res = [n for n in res if n.get("t") and n.get("d") and "/categoria/" not in n["u"] and "/category/" not in n["u"]]
+    print(f"Subidos a la tabla: {supa.subir_noticias(res)}")
+
 def main():
+    if "--archivo" in sys.argv:
+        i = sys.argv.index("--archivo")
+        return solo_archivo(int(sys.argv[i + 1]) if len(sys.argv) > i + 1 else 12000)
     try:
         viejas = json.load(open("data/noticias.json", encoding="utf-8"))
     except FileNotFoundError:
@@ -283,11 +299,6 @@ def main():
     previas = {n["u"]: n for n in viejas}
     nuevas, de_archivo = [], set()
     AHORA = dt.datetime.now(RDZ).strftime("%H:%M")  # hora en que el robot ve el titular (hora RD)
-    if "--historial" in sys.argv:
-        k = {n["u"] for n in viejas}
-        nuevas += historial(k)
-        nuevas += archivo(k, int(sys.argv[sys.argv.index("--historial") + 1]) if len(sys.argv) > sys.argv.index("--historial") + 1 else 6000)
-        de_archivo = {n["u"] for n in nuevas}  # del archivo histórico: la hora de captura no sirve como referencia
     for fuente in FUENTES:
         try:
             n = fuente(); nuevas += n; print(f"{fuente.__name__}: {len(n)} titulares")
@@ -329,6 +340,9 @@ def main():
         cuenta[n["s"]] = cuenta.get(n["s"], 0) + 1
         if cuenta[n["s"]] <= POR_FUENTE: final.append(n)
     json.dump(final, open("data/noticias.json", "w", encoding="utf-8"), ensure_ascii=False, indent=0)
+    if os.environ.get("SUPABASE_URL"):
+        import supa
+        print(f"Titulares enviados a la tabla de Supabase: {supa.subir_noticias(todas)}")
     print(f"Total guardado: {len(final)} · " + ", ".join(f"{k}: {min(v, POR_FUENTE)}" for k, v in cuenta.items()))
 
 if __name__ == "__main__":
