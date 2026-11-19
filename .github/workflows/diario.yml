@@ -2,7 +2,7 @@
 name: Actualización diaria
 on:
   schedule:
-    - cron: "15 12 * * 1-5"   # 8:15 am hora RD: noticias de la mañana
+    - cron: "15 12 * * 1-5"   # 8:15 am hora RD (las noticias ahora tienen su propio robot cada 30 min)
     - cron: "0 17-23 * * 1-5" # cada hora de 1:00 pm a 7:00 pm hora RD: busca el boletín del día (se marca PRELIMINAR)
     - cron: "5 1 * * 2-6"     # 9:05 pm hora RD: descarga definitiva del boletín del día
   workflow_dispatch: {}       # botón "Run workflow" para correrlo a mano
