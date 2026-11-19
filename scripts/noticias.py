@@ -186,12 +186,15 @@ MESES_C = {"ene": 1, "feb": 2, "mar": 3, "abr": 4, "may": 5, "jun": 6, "jul": 7,
 
 def cevaldom(url="https://www.cevaldom.com/noticias/"):
     out = []
-    for u, t in anclas(url):
+    html = requests.get(url, headers=UA, timeout=60).content
+    for a in BeautifulSoup(html, "html.parser").find_all("a", href=True):
+        u = a["href"].split("?")[0]
         if u.startswith("/"): u = "https://www.cevaldom.com" + u
+        hd = a.find(["h1", "h2", "h3", "h4"]); t = limpio((hd or a).get_text(" ")); todo = limpio(a.get_text(" "))
         if not re.match(r"https://www\.cevaldom\.com/noticias/[a-z0-9-]{12,}/?$", u) or len(t) < 25: continue
-        m = re.search(r"\s(\d{1,2})\s+(ene|feb|mar|abr|may|jun|jul|ago|sept?|oct|nov|dic)\w*\.?\s+(\d{4})", t, re.I)
+        m = re.search(r"\s(\d{1,2})\s+(ene|feb|mar|abr|may|jun|jul|ago|sept?|oct|nov|dic)\w*\.?\s+(\d{4})", " " + todo, re.I)  # la fecha está en el texto de la tarjeta, fuera del título
         d = f"{m[3]}-{MESES_C[m[2][:3].lower()]:02d}-{int(m[1]):02d}" if m else None
-        out.append({"s": "CEVALDOM", "t": t[:m.start()].strip() if m else t, "u": u, "c": "Mercado de valores", "d": d})
+        out.append({"s": "CEVALDOM", "t": t if hd else re.sub(r"\s\d{1,2}\s+\w{3,5}\.?\s+\d{4}.*$", "", t), "u": u, "c": "Mercado de valores", "d": d})
     return out
 
 # Bloqueados por Cloudflare para robots (no se intenta saltar esa protección): El Caribe, SIMV (Superintendencia del Mercado de Valores), BVRD, Ministerio de Hacienda, MEPyD.
@@ -422,11 +425,17 @@ def main():
     for n in nuevas:
         if n["u"] not in previas and n["u"] not in vistas_ahora and not n.get("h"):
             vistas_ahora.add(n["u"]); sin_hora.append(n)
-    for n in sin_hora[:150]:
+    for n in sin_hora[:400]:
         f, hr = fecha_articulo(n["u"], True); time.sleep(0.2)
         if f and (not n.get("d") or n["d"] == f): n["d"], n["h"] = f, hr
         elif not n.get("d"): n["d"] = f
-    print(f"Fecha/hora leídas de la nota: {sum(1 for n in sin_hora[:150] if n.get('h'))} con hora de {len(sin_hora[:150])}")
+    print(f"Fecha/hora leídas de la nota: {sum(1 for n in sin_hora[:400] if n.get('h'))} con hora de {len(sin_hora[:400])}")
+    # titulares que quedaron con la fecha en que el robot los vio (sin fecha publicada): se corrige con la fecha de la nota
+    corr = [n for n in viejas if n.get("d") and n.get("d") == n.get("v") and not n.get("h") and not n.get("fd")][:400]
+    for n in corr:
+        f, hr = fecha_articulo(n["u"], True); time.sleep(0.15); n["fd"] = 1
+        if f: n["d"], n["h"] = f, hr
+    if corr: print(f"Fechas corregidas con la nota: {sum(1 for n in corr if n['d'] != n['v'])} de {len(corr)}")
     # titulares ya guardados de los últimos 3 días que aún no tienen hora (una sola vez por titular)
     lim = (dt.date.fromisoformat(HOY) - dt.timedelta(days=3)).isoformat()
     pend = [n for n in viejas if (n.get("d") or "") >= lim and not n.get("h") and not n.get("ht")][:300]
@@ -444,7 +453,7 @@ def main():
         if p and p.get("vh"): n["vh"] = p["vh"]
         elif not p and n["u"] not in de_archivo: n["vh"] = AHORA  # hora RD de esa primera vez
         if not n.get("d"): n["d"] = (p or {}).get("d") or n["v"]
-        for k in ("h", "ht"):  # conservar la hora ya leída (la portada vuelve a traer el titular sin hora)
+        for k in ("h", "ht", "fd"):  # conservar la hora ya leída (la portada vuelve a traer el titular sin hora)
             if p and p.get(k) and not n.get(k): n[k] = p[k]  # sin fecha publicada: se usa la primera vez visto
         todas.append(n)
     todas.sort(key=lambda n: (n.get("d") or "", n.get("h") or "", n.get("v") or ""), reverse=True)
