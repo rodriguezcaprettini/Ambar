@@ -60,7 +60,10 @@ COLS_NOT = ("u", "s", "t", "d", "h", "vh", "v", "c")
 
 def subir_noticias(filas):
     """Inserta o actualiza titulares en la tabla public.noticias (clave: el enlace)."""
-    filas = [{k: (f.get(k) or None) for k in COLS_NOT} for f in filas if f.get("u") and f.get("t")]
+    unicas = {}
+    for f in filas:  # un mismo enlace no puede ir dos veces en el mismo envío
+        if f.get("u") and f.get("t"): unicas[f["u"]] = {k: (f.get(k) or None) for k in COLS_NOT}
+    filas = list(unicas.values())
     for i in range(0, len(filas), 1000):
         r = rest("POST", "noticias?on_conflict=u", json=filas[i:i + 1000],
                  extra={"Prefer": "resolution=merge-duplicates,return=minimal", "content-type": "application/json"})
