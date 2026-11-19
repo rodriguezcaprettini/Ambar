@@ -101,24 +101,44 @@ def banco_central(pagina=0, tam=15):
                                 "filter": "", "skipCount": pagina, "maxResultCount": tam})
         for it in r.json()["result"]["items"]:
             f = (it.get("auxiliarDatetime1") or "")[:10]
-            if not f or f.startswith("0001"): f = (it.get("creationTime") or "")[:10] or None
+            fc, hc = a_rd(it.get("creationTime"))
+            if not f or f.startswith("0001"): f = fc
             out.append({"s": "Banco Central", "t": limpio(it["title"]), "u": f"https://www.bancentral.gov.do/a/d/{it['stringId']}",
-                        "c": cat, "d": f})
+                        "c": cat, "d": f, "h": hc if fc == f else None})
     return out
 
 FUENTES = (diario_libre, diario_financiero, revista_mercado, el_dinero, listin, hoy, el_dia, banco_central)
 
-def fecha_articulo(u):
-    """Fecha de publicación leída de la propia nota (metadatos estándar de los periódicos)."""
+RDZ = ZoneInfo("America/Santo_Domingo")
+_ISO = r'(\d{4}-\d\d-\d\d(?:[T ]\d\d:\d\d(?::\d\d(?:\.\d+)?)?(?:Z|[+-]\d\d:?\d\d)?)?)'
+
+def a_rd(s):
+    """'2026-11-18T14:35:00-04:00' -> ('2026-11-18', '14:35') en hora de RD. Sin hora -> (fecha, None)."""
+    if not s: return None, None
+    s = s.strip().replace(" ", "T")
+    if len(s) == 10: return s, None
+    try:
+        x = dt.datetime.fromisoformat(s.replace("Z", "+00:00"))
+        if x.tzinfo: x = x.astimezone(RDZ)
+        return x.date().isoformat(), x.strftime("%H:%M")
+    except ValueError:
+        return s[:10], None
+
+def _publicado(h):
+    for rx in (r'property="article:published_time"\s+content="' + _ISO, r'content="' + _ISO + r'"\s+property="article:published_time"',
+               r'"datePublished"\s*:\s*"' + _ISO, r'itemprop="datePublished"[^>]*content="' + _ISO, r'<time[^>]+datetime="' + _ISO):
+        m = re.search(rx, h)
+        if m: return a_rd(m[1])
+    return None, None
+
+def fecha_articulo(u, con_hora=False):
+    """Fecha (y hora RD) de publicación leída de la propia nota (metadatos estándar de los periódicos)."""
     try:
         h = requests.get(u, headers=UA, timeout=30).text[:400000]
     except Exception:
-        return None
-    for rx in (r'property="article:published_time"\s+content="(\d{4}-\d\d-\d\d)', r'content="(\d{4}-\d\d-\d\d)[^"]*"\s+property="article:published_time"',
-               r'"datePublished"\s*:\s*"(\d{4}-\d\d-\d\d)', r'<time[^>]+datetime="(\d{4}-\d\d-\d\d)', r'itemprop="datePublished"[^>]*content="(\d{4}-\d\d-\d\d)'):
-        m = re.search(rx, h)
-        if m: return m[1]
-    return None
+        return (None, None) if con_hora else None
+    f, hr = _publicado(h)
+    return (f, hr) if con_hora else f
 
 # Páginas anteriores de cada medio (las que tienen paginación estable)
 PAGINAS = [
@@ -197,15 +217,11 @@ def nota(u):
     try:
         h = requests.get(u, headers=UA, timeout=30).text[:400000]
     except Exception:
-        return None, None
+        return None, (None, None)
     m = re.search(r'<meta[^>]+property="og:title"[^>]+content="([^"]+)"', h) or re.search(r"<title>(.*?)</title>", h, re.S)
     t = limpio(BeautifulSoup(m[1], "html.parser").get_text()) if m else None
     if t: t = re.sub(r"\s*[|–-]\s*(Diario Libre|Listín Diario|Hoy Digital|Diario Financiero|Revista Mercado|Mercado)\s*$", "", t)
-    f = None
-    for rx in (r'property="article:published_time"\s+content="(\d{4}-\d\d-\d\d)', r'"datePublished"\s*:\s*"(\d{4}-\d\d-\d\d)', r'<time[^>]+datetime="(\d{4}-\d\d-\d\d)'):
-        mm = re.search(rx, h)
-        if mm: f = mm[1]; break
-    return t, f
+    return t, _publicado(h)
 
 def archivo(conocidas, maximo):
     cand = []
@@ -223,9 +239,10 @@ def archivo(conocidas, maximo):
     cand.sort(key=lambda c: c["d"] or "9999", reverse=True)
     out = []
     for i, c in enumerate(cand[:maximo]):
-        t, f = nota(c["u"])
+        t, (f, hr) = nota(c["u"])
         if t and len(t) > 20:
-            c["t"] = t; c["d"] = c["d"] or f
+            c["t"] = t
+            if not c["d"] or c["d"] == f: c["d"], c["h"] = f or c["d"], hr
             if c["d"] and c["d"] >= DESDE: out.append(c)
         time.sleep(0.25)
         if i % 250 == 0: print(f"  … {i} de {min(len(cand), maximo)}")
@@ -248,10 +265,16 @@ def main():
             n = fuente(); nuevas += n; print(f"{fuente.__name__}: {len(n)} titulares")
         except Exception as e:  # si una fuente falla, no detiene el resto
             print(f"{fuente.__name__}: ERROR {e}", file=sys.stderr)
-    sin_fecha = [n for n in nuevas if not n.get("d") and n["u"] not in previas]
-    for n in sin_fecha[:150]:  # se consulta la fecha en la propia nota (máx. 150 por corrida)
-        n["d"] = fecha_articulo(n["u"]); time.sleep(0.2)
-    print(f"Fechas leídas de la nota: {sum(1 for n in sin_fecha[:150] if n.get('d'))} de {len(sin_fecha[:150])}")
+    # titulares nuevos: se lee la fecha y la hora de publicación en la propia nota (máx. 150 por corrida)
+    vistas_ahora, sin_hora = set(), []
+    for n in nuevas:
+        if n["u"] not in previas and n["u"] not in vistas_ahora and not n.get("h"):
+            vistas_ahora.add(n["u"]); sin_hora.append(n)
+    for n in sin_hora[:150]:
+        f, hr = fecha_articulo(n["u"], True); time.sleep(0.2)
+        if f and (not n.get("d") or n["d"] == f): n["d"], n["h"] = f, hr
+        elif not n.get("d"): n["d"] = f
+    print(f"Fecha/hora leídas de la nota: {sum(1 for n in sin_hora[:150] if n.get('h'))} con hora de {len(sin_hora[:150])}")
     nuevas = [n for n in nuevas if not n.get("d") or n["d"] >= DESDE]
     vistos, todas = set(), []
     for n in nuevas + viejas:  # sin duplicados por enlace
@@ -261,7 +284,7 @@ def main():
         n["v"] = (p or {}).get("v") or n.get("v") or (None if p else HOY)  # primera vez que Ámbar vio el titular
         if not n.get("d"): n["d"] = (p or {}).get("d") or n["v"]  # sin fecha publicada: se usa la primera vez visto
         todas.append(n)
-    todas.sort(key=lambda n: (n.get("d") or "", n.get("v") or ""), reverse=True)
+    todas.sort(key=lambda n: (n.get("d") or "", n.get("h") or "", n.get("v") or ""), reverse=True)
     cuenta, final = {}, []
     for n in todas:
         cuenta[n["s"]] = cuenta.get(n["s"], 0) + 1

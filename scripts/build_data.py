@@ -148,7 +148,7 @@ except FileNotFoundError:
 with open("data/out/noticias.json", "w", encoding="utf-8") as fh:
     json.dump(noticias, fh, ensure_ascii=False, separators=(",", ":"))
 _c, recientes = {}, []
-for n in sorted(noticias, key=lambda n: (n.get("d") or "", n.get("v") or ""), reverse=True):
+for n in sorted(noticias, key=lambda n: (n.get("d") or "", n.get("h") or "", n.get("v") or ""), reverse=True):
     _c[n["s"]] = _c.get(n["s"], 0) + 1
     if _c[n["s"]] <= 25: recientes.append(n)
 with open("data/out/data.json", "w", encoding="utf-8") as fh:
