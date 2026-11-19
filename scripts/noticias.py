@@ -154,7 +154,9 @@ def micm(url="https://micm.gob.do/noticias/"):
 
 def dgii(url="https://dgii.gov.do/noticias/Paginas/default.aspx"):
     out = []
-    for u, t in anclas(url):
+    html = requests.get(url, headers=UA, timeout=60).content
+    for a in BeautifulSoup(html, "html.parser").find_all("a", href=True):
+        u, t = a["href"].split("?")[0], limpio(a.get_text(" "))  # texto completo: incluye la fecha dd/mm/aaaa
         if u.startswith("/"): u = "https://dgii.gov.do" + u
         u = u.replace("http://", "https://")
         if re.search(r"dgii\.gov\.do/noticias/Paginas/(?!default).+\.aspx$", u) and len(t) > 25:
@@ -231,6 +233,9 @@ def fecha_articulo(u, con_hora=False):
     except Exception:
         return (None, None) if con_hora else None
     f, hr = _publicado(h)
+    if not f and "dgii.gov.do" in u:  # DGII no publica metadatos: primera fecha dd/mm/aaaa del texto
+        m = re.search(r"\b(\d\d)/(\d\d)/(20\d\d)\b", re.sub(r"<[^>]+>", " ", h))
+        if m: f = f"{m[3]}-{m[2]}-{m[1]}"
     return (f, hr) if con_hora else f
 
 # Páginas anteriores de cada medio (las que tienen paginación estable)
@@ -431,9 +436,9 @@ def main():
         elif not n.get("d"): n["d"] = f
     print(f"Fecha/hora leídas de la nota: {sum(1 for n in sin_hora[:400] if n.get('h'))} con hora de {len(sin_hora[:400])}")
     # titulares que quedaron con la fecha en que el robot los vio (sin fecha publicada): se corrige con la fecha de la nota
-    corr = [n for n in viejas if n.get("d") and n.get("d") == n.get("v") and not n.get("h") and not n.get("fd")][:400]
+    corr = [n for n in viejas if n.get("d") and n.get("d") == n.get("v") and not n.get("h") and not n.get("fd2")][:400]
     for n in corr:
-        f, hr = fecha_articulo(n["u"], True); time.sleep(0.15); n["fd"] = 1
+        f, hr = fecha_articulo(n["u"], True); time.sleep(0.15); n["fd2"] = 1
         if f: n["d"], n["h"] = f, hr
     if corr: print(f"Fechas corregidas con la nota: {sum(1 for n in corr if n['d'] != n['v'])} de {len(corr)}")
     # titulares ya guardados de los últimos 3 días que aún no tienen hora (una sola vez por titular)
@@ -453,7 +458,7 @@ def main():
         if p and p.get("vh"): n["vh"] = p["vh"]
         elif not p and n["u"] not in de_archivo: n["vh"] = AHORA  # hora RD de esa primera vez
         if not n.get("d"): n["d"] = (p or {}).get("d") or n["v"]
-        for k in ("h", "ht", "fd"):  # conservar la hora ya leída (la portada vuelve a traer el titular sin hora)
+        for k in ("h", "ht", "fd2"):  # conservar la hora ya leída (la portada vuelve a traer el titular sin hora)
             if p and p.get(k) and not n.get(k): n[k] = p[k]  # sin fecha publicada: se usa la primera vez visto
         todas.append(n)
     todas.sort(key=lambda n: (n.get("d") or "", n.get("h") or "", n.get("v") or ""), reverse=True)
