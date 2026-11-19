@@ -186,7 +186,11 @@ def historial(conocidas):
 # ---------- Archivo vía sitemaps (las portadas solo muestran las últimas semanas) ----------
 def _locs(url):
     try:
-        x = requests.get(url, headers=UA, timeout=60).text
+        c = requests.get(url, headers=UA, timeout=60).content
+        try:
+            import gzip; x = gzip.decompress(c).decode("utf-8", "ignore")  # algunos sitemaps vienen comprimidos (.xml.gz)
+        except OSError:
+            x = c.decode("utf-8", "ignore")
     except Exception:
         return []
     return re.findall(r"<loc>\s*(?:<!\[CDATA\[)?\s*(.*?)\s*(?:\]\]>)?\s*</loc>", x)
@@ -203,9 +207,8 @@ def _indice(url, filtro):
 ARCHIVO = [  # (fuente, sitemaps, filtro de URL de nota económica, categoría)
     ("Diario Libre", lambda: [f"https://www.diariolibre.com/sitemapnoticias/{m:%Y%m}" for m in _meses()],
      lambda u: re.search(r"diariolibre\.com/economia/[a-z-]+/(\d{4})/\d\d/\d\d/", u), "Economía"),
-    ("Listín Diario", lambda: _indice("https://listindiario.com/sitemap-index.xml", lambda s: "images" not in s and re.search(r"20(2[5-9])\d\d", s)),
-     lambda u: re.search(r"listindiario\.com/economia/(?:[a-z-]+/)?\d{8}/", u), "Economía"),
-    ("Hoy", lambda: _indice("https://hoy.com.do/sitemap-index.xml", lambda s: "images" not in s and re.search(r"20(2[5-9])\d\d", s)),
+    # Listín Diario no publica sitemaps de noticias posteriores a mayo de 2023: su archivo solo llega hasta donde llega su portada
+    ("Hoy", lambda: _indice("https://hoy.com.do/sitemap-index.xml", lambda s: re.search(r"sitemap-noticias-20(2[5-9])\d\d", s)),
      lambda u: re.search(r"hoy\.com\.do/economia/[a-z0-9-]{10,}_\d+\.html", u), "Economía"),
     ("Diario Financiero", lambda: _indice("https://diariofinanciero.do/sitemap_index.xml", lambda s: "post-sitemap" in s),
      lambda u: (m := re.match(r"https://diariofinanciero\.do/([a-z-]+)/[a-z0-9-]{12,}/?$", u)) and m[1] not in EXCLUIR_DF + ("herramientas-financieras",), "Economía"),
