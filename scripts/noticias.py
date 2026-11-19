@@ -47,7 +47,7 @@ def diario_financiero(url="https://diariofinanciero.do/"):
     out = []
     for u, t in anclas(url):
         m = re.match(r"https://diariofinanciero\.do/([a-z-]+)/(?:[a-z-]+/)?[a-z0-9-]{12,}/?$", u)
-        if not m or len(t) < 25 or m[1] in EXCLUIR_DF or m[1] in ("category", "tag", "author", "herramientas-financieras", "page") \
+        if not m or len(t) < 25 or m[1] in EXCLUIR_DF or m[1] in ("category", "categoria", "tag", "author", "herramientas-financieras", "page") \
                 or re.match(r"(Ranking|Comparador|Calculadora|Guía|Precio del dólar)\b", t, re.I):  # herramientas fijas del sitio
             continue
         out.append({"s": "Diario Financiero", "t": t, "u": u, "c": CAT.get(m[1], "Economía"), "d": None})
@@ -293,7 +293,7 @@ def main():
     nuevas = [n for n in nuevas if not n.get("d") or n["d"] >= DESDE]
     vistos, todas = set(), []
     for n in nuevas + viejas:  # sin duplicados por enlace
-        if n["u"] in vistos: continue
+        if n["u"] in vistos or "/categoria/" in n["u"] or "/category/" in n["u"]: continue  # páginas de sección, no notas
         vistos.add(n["u"])
         p = previas.get(n["u"])
         n["v"] = (p or {}).get("v") or n.get("v") or (None if p else HOY)  # primera vez que Ámbar vio el titular
