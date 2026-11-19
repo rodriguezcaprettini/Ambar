@@ -275,6 +275,13 @@ def main():
         if f and (not n.get("d") or n["d"] == f): n["d"], n["h"] = f, hr
         elif not n.get("d"): n["d"] = f
     print(f"Fecha/hora leídas de la nota: {sum(1 for n in sin_hora[:150] if n.get('h'))} con hora de {len(sin_hora[:150])}")
+    # titulares ya guardados de los últimos 3 días que aún no tienen hora (una sola vez por titular)
+    lim = (dt.date.fromisoformat(HOY) - dt.timedelta(days=3)).isoformat()
+    pend = [n for n in viejas if (n.get("d") or "") >= lim and not n.get("h") and not n.get("ht")][:120]
+    for n in pend:
+        f, hr = fecha_articulo(n["u"], True); time.sleep(0.2); n["ht"] = 1
+        if f and n.get("d") in (None, f, n.get("v")): n["d"], n["h"] = f, hr
+    if pend: print(f"Hora agregada a titulares recientes: {sum(1 for n in pend if n.get('h'))} de {len(pend)}")
     nuevas = [n for n in nuevas if not n.get("d") or n["d"] >= DESDE]
     vistos, todas = set(), []
     for n in nuevas + viejas:  # sin duplicados por enlace
