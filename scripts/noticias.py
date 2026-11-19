@@ -171,9 +171,29 @@ def superintendencia_bancos(url="https://sb.gob.do/publicaciones/cronologia-sb/p
             out.append({"s": "Superintendencia de Bancos", "t": t, "u": u, "c": "Banca", "d": None})
     return out
 
-# Bloqueados por Cloudflare para robots (no se intenta saltar esa protección): El Caribe, SIMV, BVRD, Ministerio de Hacienda, MEPyD.
+def el_brifin(url="https://elbrifin.com/category/temas/economia-y-finanzas/"):
+    out = []
+    for u, t in anclas(url):
+        m = re.match(r"https://elbrifin\.com/([a-z0-9-]+)/?$", u)
+        if m and m[1].count("-") >= 3 and len(t) > 25 and not m[1].startswith(("category", "la-guagua")):
+            out.append({"s": "El Brifin", "t": t, "u": u, "c": "Economía y finanzas", "d": None})
+    return out
+
+MESES_C = {"ene": 1, "feb": 2, "mar": 3, "abr": 4, "may": 5, "jun": 6, "jul": 7, "ago": 8, "sep": 9, "oct": 10, "nov": 11, "dic": 12}
+
+def cevaldom(url="https://www.cevaldom.com/noticias/"):
+    out = []
+    for u, t in anclas(url):
+        if u.startswith("/"): u = "https://www.cevaldom.com" + u
+        if not re.match(r"https://www\.cevaldom\.com/noticias/[a-z0-9-]{12,}/?$", u) or len(t) < 25: continue
+        m = re.search(r"\s(\d{1,2})\s+(ene|feb|mar|abr|may|jun|jul|ago|sept?|oct|nov|dic)\w*\.?\s+(\d{4})", t, re.I)
+        d = f"{m[3]}-{MESES_C[m[2][:3].lower()]:02d}-{int(m[1]):02d}" if m else None
+        out.append({"s": "CEVALDOM", "t": t[:m.start()].strip() if m else t, "u": u, "c": "Mercado de valores", "d": d})
+    return out
+
+# Bloqueados por Cloudflare para robots (no se intenta saltar esa protección): El Caribe, SIMV (Superintendencia del Mercado de Valores), BVRD, Ministerio de Hacienda, MEPyD.
 FUENTES = (diario_libre, diario_financiero, revista_mercado, el_dinero, listin, hoy, el_dia, banco_central,
-           el_nuevo_diario, n_digital, cdn, acento, micm, dgii, superintendencia_bancos)
+           el_nuevo_diario, n_digital, cdn, acento, micm, dgii, superintendencia_bancos, el_brifin, cevaldom)
 
 RDZ = ZoneInfo("America/Santo_Domingo")
 _ISO = r'(\d{4}-\d\d-\d\d(?:[T ]\d\d:\d\d(?::\d\d(?:\.\d+)?)?(?:Z|[+-]\d\d:?\d\d)?)?)'
@@ -217,6 +237,8 @@ PAGINAS = [
     (el_nuevo_diario, lambda n: f"https://elnuevodiario.com.do/economia/page/{n}/", 3000),
     (n_digital, lambda n: f"https://n.com.do/economia/page/{n}/", 1500),
     (micm, lambda n: f"https://micm.gob.do/noticias/page/{n}/", 600),
+    (el_brifin, lambda n: f"https://elbrifin.com/category/temas/economia-y-finanzas/page/{n}/", 30),
+    
 ]
 
 def historial(conocidas):
@@ -329,7 +351,7 @@ def nota(u):
         if m: f = (f"{m[3]}-{m[2]}-{m[1]}", None)
     return t, f
 
-def archivo(conocidas, maximo):
+def archivo(conocidas, maximo, subir=None):
     cand = []
     for fuente, sitemaps, filtro, cat in ARCHIVO:
         n0 = len(cand)
@@ -356,7 +378,9 @@ def archivo(conocidas, maximo):
                 c["t"] = t
                 if not c["d"] or c["d"] == f: c["d"], c["h"] = f or c["d"], hr
                 if c["d"] and c["d"] >= DESDE: out.append(c)
-            if i % 500 == 0: print(f"  … {i} de {len(lote)}")
+            if i % 500 == 0: print(f"  … {i} de {len(lote)}", flush=True)
+            if subir and len(out) >= 1000:  # sube por partes: el avance se ve en la terminal sin esperar al final
+                subir(out); print(f"  subidos {len(out)}", flush=True); out = []
     print(f"Archivo: {len(out)} titulares agregados ({max(0, len(cand) - maximo)} pendientes para la próxima corrida)")
     return out
 
@@ -369,9 +393,10 @@ def solo_archivo(maximo):
     except FileNotFoundError:
         pass
     print(f"Titulares ya guardados en la tabla: {len(k)}")
-    res = historial(k) + archivo(k, maximo)
-    res = [n for n in res if n.get("t") and n.get("d") and "/categoria/" not in n["u"] and "/category/" not in n["u"]]
-    print(f"Subidos a la tabla: {supa.subir_noticias(res)}")
+    limpio_ = lambda L: [n for n in L if n.get("t") and n.get("d") and "/categoria/" not in n["u"] and "/category/" not in n["u"]]
+    sub = lambda L: supa.subir_noticias(limpio_(L))
+    print(f"Páginas anteriores: {sub(historial(k))} subidos", flush=True)
+    print(f"Sitemaps (último lote): {sub(archivo(k, maximo, sub))} subidos")
 
 def main():
     if "--archivo" in sys.argv:
