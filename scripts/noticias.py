@@ -171,11 +171,13 @@ def superintendencia_bancos(url="https://sb.gob.do/publicaciones/cronologia-sb/p
             out.append({"s": "Superintendencia de Bancos", "t": t, "u": u, "c": "Banca", "d": None})
     return out
 
-def el_brifin(url="https://elbrifin.com/category/temas/economia-y-finanzas/"):
+def el_brifin(url=None):
+    """Sección Economía y finanzas + el resumen diario (El Brifin publica pocas notas sueltas de economía)."""
     out = []
-    for u, t in anclas(url):
+    urls = [url] if url else ["https://elbrifin.com/category/temas/economia-y-finanzas/", "https://elbrifin.com/category/el-brifin-diario/"]
+    for u, t in (x for v in urls for x in anclas(v)):
         m = re.match(r"https://elbrifin\.com/([a-z0-9-]+)/?$", u)
-        if m and m[1].count("-") >= 3 and len(t) > 25 and not m[1].startswith(("category", "la-guagua")):
+        if m and m[1].count("-") >= 3 and len(t) > 25 and not m[1].startswith(("category", "la-guagua", "brifeos-por", "para-entender-los-talibanes")):
             out.append({"s": "El Brifin", "t": t, "u": u, "c": "Economía y finanzas", "d": None})
     return out
 
