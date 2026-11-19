@@ -34,7 +34,7 @@ def pedir(metodo, ruta, **kw):
 def subir_archivo(local, remoto):
     tipo = "application/json" if local.endswith(".json") else (mimetypes.guess_type(local)[0] or "text/plain")
     with open(local, "rb") as fh:
-        r = pedir("POST", f"object/{BUCKET}/{remoto}", data=fh.read(), extra={"x-upsert": "true", "content-type": tipo})
+        r = pedir("POST", f"object/{BUCKET}/{remoto}", data=fh.read(), extra={"x-upsert": "true", "content-type": tipo, "cache-control": "max-age=60"})  # el navegador no guarda copias viejas más de 1 min
     if r.status_code >= 300:
         raise SystemExit(f"Error subiendo {remoto}: {r.status_code} {r.text[:300]}")
 
