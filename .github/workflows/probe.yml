@@ -6,23 +6,10 @@ jobs:
     steps:
       - run: pip install -q pdfplumber requests
       - run: |
-          cat > p.py <<'PY'
-          import requests,pdfplumber,io,re
-          B="https://cdn.bancentral.gov.do/documents/estadisticas/mercado-cambiario/documents/"
-          for f in ["tasaus_mc.pdf","TMC4001.pdf","SONDEO_VENTANILLA_DOLAR.pdf","SONDEO_VENTANILLA_EURO.pdf","SONDEO_TRANSFERENCIA_EURO.pdf","TAC4009_BC_2026.pdf","TAC4009_PRI_2026.pdf","TAC4009_AGE_2026.pdf"]:
-              r=requests.get(B+f,headers={"User-Agent":"Mozilla/5.0"},timeout=60)
-              print("=====",f,r.status_code,len(r.content),r.headers.get("last-modified"))
-              try:
-                  with pdfplumber.open(io.BytesIO(r.content)) as p:
-                      print("pages",len(p.pages))
-                      for pg in p.pages[:1]:
-                          t=pg.extract_text() or ""; print(t[:1500])
-                      if len(p.pages)>1: print("... last page:"); print((p.pages[-1].extract_text() or "")[-800:])
-              except Exception as e: print("ERR",e)
-          PY
-          python p.py
-          curl -sL -A "Mozilla/5.0" "https://www.bancentral.gov.do/a/CustomView/2538-mercado-cambiario" -o v.html
           python - <<'PY'
-          import re;h=open("v.html",encoding="utf-8",errors="ignore").read()
-          i=h.find("Hoy");print(re.sub(r"\s+"," ",re.sub(r"<[^>]+>"," | ",h[max(0,i-3000):i+6000]))[:5000])
+          import requests,pdfplumber,io,re
+          r=requests.get("https://cdn.bancentral.gov.do/documents/estadisticas/mercado-cambiario/documents/SONDEO_VENTANILLA_DOLAR.pdf",headers={"User-Agent":"Mozilla/5.0"})
+          t="\n".join(p.extract_text() or "" for p in pdfplumber.open(io.BytesIO(r.content)).pages)
+          print(re.findall(r"^(\d{2})/(\d{2})/(\d{2}) ([\d.]+) - ([\d.]+) -$", t, re.M))
+          print([l for l in t.splitlines() if re.match(r"^\d{2}/",l)])
           PY
