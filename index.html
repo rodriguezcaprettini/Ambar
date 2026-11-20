@@ -338,7 +338,7 @@ const BUCK={d:["Diario",s=>s,s=>fdy(s)+(isPre(s)?" (prel.)":"")],w:["Semanal",wk
 function show(k){_show(k);setTimeout(()=>{xlBtns();reSort()},0)}
 function _show(k){kill();window.scrollTo(0,0);const base=k.startsWith("det-")?"mercado":k.startsWith("t-")?(BYI[k.slice(2)]?.mercado=="renta_variable"?"rv":"rf"):k;
  document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.k==base));const m=$("main");
- $("main").className=k=="mercado"?"dash":"";
+ $("main").className=k=="mercado"?"dash":"";$("main").style.removeProperty("grid-template-rows");
  if(k.startsWith("det-"))return detail(k.slice(4));
  if(k.startsWith("t-"))return titulo(k.slice(2));
  if(k=="mercado")return mercado();
@@ -389,6 +389,7 @@ function mercado(){const m=$("main"),T=BYD[LAST],P=BYD[LAST-1]||[];
  const L=mktPref(),col=k=>`<div class=dcol data-c=${k} style="flex:${k?1:(L.split||1.6)} 1 0">${L.cols[k].filter(id=>PN[id]).map(id=>PN[id].replace('<div class="pn ','<div data-p='+id+' style="flex:'+(L.w[id]||1)+' 1 0" class="pn ')).join('<div class=vsz title="Arrastra para cambiar el tamaño"></div>')}</div>`;
  m.innerHTML=`${L.kpi?`<div class=kstrip>${["monto","rf","rv","ops","tit"].map(card).join("")}<div class=ks0>vs. ${fd(D.fechas[LAST-1])}${isPre(D.fecha)?' · <u class=pb>Preliminar</u>':''}</div></div>`:""}
  <div class="dgrid d2 dflex">${L.cols[0].length?col(0):""}${L.cols[0].length&&L.cols[1].length?'<div class=hsz title="Arrastra para cambiar el ancho"></div>':""}${L.cols[1].length?col(1):""}</div>`;
+ if(L.kpi)m.style.removeProperty("grid-template-rows");else m.style.setProperty("grid-template-rows","minmax(0,1fr)","important");  // sin franja de métricas, los paneles ocupan todo el alto
  mktDrag();
  newsLive();if($("dpt")){dpue();segBind("dpp",v=>{DPU.per=v;dpue()});segBind("dps",v=>{DPU.seg=v;dpue()})}
  if(!$("cv"))return;
