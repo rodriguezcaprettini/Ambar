@@ -207,7 +207,7 @@ main.dash td,main.dash th{padding:4px 8px!important;font-size:12.5px}
 .fpop{position:fixed;z-index:70;width:430px;background:#fff;border:1px solid #c9d2dd;border-radius:8px;box-shadow:0 14px 30px #0a142433;padding:10px 12px;text-transform:none;letter-spacing:0;font:12px Inter,sans-serif;color:#14233b}
 .fph{font:600 10.5px var(--mono);letter-spacing:1.2px;text-transform:uppercase;color:#6b7789;margin-bottom:8px}
 .fpg{display:grid;grid-template-columns:130px 1fr;gap:8px 12px;align-items:center}.fpl{font:500 10px var(--mono);text-transform:uppercase;letter-spacing:.5px;color:#6b7789;line-height:1.3}
-.fpc{display:flex;align-items:center;gap:6px;flex-wrap:nowrap}.fpc select{min-width:120px}.fpc input[type=date]{width:128px}.fpc .chk{white-space:normal}.fpfull{grid-column:1/-1;flex-wrap:wrap}.fpfull .fpn2{flex-basis:100%}.fpc input[type=date]{padding:4px 6px;font:12px Inter}.fpn2{font-size:10.5px;color:#8a97aa;margin-top:3px;line-height:1.35}
+.fpc{display:flex;align-items:center;gap:6px;flex-wrap:nowrap}.fpc select{min-width:120px}.fpc input[type=number]{width:118px!important}.fpc input[type=date]{width:128px}.fpc .chk{white-space:normal}.fpfull{grid-column:1/-1;flex-wrap:wrap}.fpfull .fpn2{flex-basis:100%}.fpc input[type=date]{padding:4px 6px;font:12px Inter}.fpn2{font-size:10.5px;color:#8a97aa;margin-top:3px;line-height:1.35}
 .fpf{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid #eef1f5}
 .tbang{flex:none;font:800 12px var(--mono);font-style:normal;color:#0f1c30;background:#e3b35f;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center;margin-left:10px;cursor:help}
 .tbang+.tdate{margin-left:6px}.ks0 .tbang{margin:0 4px 0 6px;display:inline-block}
@@ -388,6 +388,7 @@ function _show(k){kill();document.querySelector(".lcard")?.remove();document.que
   let cch=null;
   const r=()=>{const q=$("q").value.toLowerCase(),mk=$("mk").value,mo=$("cmo").value,fv=$("cfv").value,v1=$("cv1").value,v2=$("cv2").value,t1=$("ct1").value,t2=$("ct2").value,n1=$("cn1").value||D.fechas[0],n2=$("cn2").value||D.fecha,neg=$("cneg").checked||!!($("cn1").value||$("cn2").value);
    const st=c=>{const b=BYI[c.isin];if(!b)return {n:0,ops:0,ult:null,m:0};const H=b.hist.filter(x=>x.f>=n1&&x.f<=n2);return {n:H.length,ops:H.reduce((s,x)=>s+x.n,0),ult:H.at(-1)?.f||null,m:H.reduce((s,x)=>s+x.m,0),y:H.at(-1)?.y}};
+   phSet($("ct1"),$("ct2"),D.cat.map(c=>c.tasa),2);
    const rows=D.cat.map(c=>({c,s:st(c)})).filter(({c,s})=>(!mk||c.mercado==mk)&&(!mo||c.moneda==mo)&&(!fv||c.tipo_tasa==fv)&&(!v1||(c.venc&&c.venc>=v1))&&(!v2||(c.venc&&c.venc<=v2))&&(t1===""||(c.tasa!=null&&c.tasa>=+t1))&&(t2===""||(c.tasa!=null&&c.tasa<=+t2))&&(!neg||s.ops>0)&&[c.emisor,c.adm,c.titulo,c.isin].join(" ").toLowerCase().includes(q));
    $("ccnt").textContent=tr(`${rows.length} de ${D.cat.length}`);
    $("ct").innerHTML=tbl(["Título","ISIN","Emisor / Administradora","Mon.","Tasa %","Rend. % últ. op.","F/V","Vencimiento","Última op.","Operaciones","Sesiones con op.","Monto negociado RD$ MM","Monto emisión"],rows.map(({c,s})=>[c.titulo,c.isin,(c.emisor||c.adm||"").slice(0,48),c.moneda,c.tasa!=null?f(c.tasa,2):"—",s.y?f(s.y,3):"—",c.tipo_tasa||"—",c.venc||"—",s.ult?fdy(s.ult):"—",s.ops||"—",s.n||"—",s.m?MM(s.m):"—",f(c.monto,0)]),[0,1,2],rows.map(({c})=>BYI[c.isin]?c.isin:null));reSort();
@@ -672,12 +673,12 @@ document.addEventListener("click",e=>{const b=e.target.closest(".fpb");
 ["input","change"].forEach(ev=>document.addEventListener(ev,e=>{if(e.target.closest&&e.target.closest(".fpop"))setTimeout(fpCount,0)}));
 window.addEventListener("resize",fpClose);
 // herramientas de gráfica: rango de fechas, límites del eje y recorte de atípicos por percentil
-function gCtl(id){return fPop(id,fpRow("Fechas",`<input type=date id=${id}d1 min="${D.fechas[0]}" max="${D.fecha}"> – <input type=date id=${id}d2 min="${D.fechas[0]}" max="${D.fecha}">`)
+function gCtl(id,noD){return fPop(id,(noD?"":fpRow("Fechas",`<input type=date id=${id}d1 min="${D.fechas[0]}" max="${D.fecha}"> – <input type=date id=${id}d2 min="${D.fechas[0]}" max="${D.fecha}">`))
  +fpRow("Eje vertical (valor)",`<input type=number id=${id}y1 placeholder="${tr("mín")}" style="width:90px"> – <input type=number id=${id}y2 placeholder="${tr("máx")}" style="width:90px">`)
  +fpRow("Recortar atípicos (percentil %)",`<input type=number id=${id}p1 min=0 max=50 step=1 placeholder="ej. 2" style="width:70px"> – <input type=number id=${id}p2 min=50 max=100 step=1 placeholder="ej. 98" style="width:70px">`)
  +fpRow("",`<div class=fpn2>Eje vertical: fija el mínimo y el máximo exactos. Percentil: la escala va del percentil inferior al superior de los datos (por ejemplo 2 y 98 ignoran el 2% más bajo y el 2% más alto); lo que se sale queda cortado en el borde. Si llenas ambos, mandan los valores del eje.</div>`),"Herramientas")}
 function gRng(id,st,en){const a=$(id+"d1")?.value,b=$(id+"d2")?.value;if(a){const i=D.fechas.findIndex(d=>d>=a);if(i>=0)st=i}if(b){let j=-1;D.fechas.forEach((d,k)=>{if(d<=b)j=k});if(j>=0)en=j}return [st,Math.max(st,en)]}
-function gLim(id,ch,vals){const y=ch.options.scales.y,a=$(id+"y1")?.value,b=$(id+"y2")?.value,V=vals.filter(v=>v!=null&&isFinite(v)).sort((p,q)=>p-q);
+function gLim(id,ch,vals){const y=ch.options.scales.y,a=$(id+"y1")?.value,b=$(id+"y2")?.value,V=vals.filter(v=>v!=null&&isFinite(v)).sort((p,q)=>p-q);phSet($(id+"y1"),$(id+"y2"),V,V.length&&Math.abs(V.at(-1))<1000?2:0);
  const P1=$(id+"p1")?.value,P2=$(id+"p2")?.value;if((P1||P2)&&V.length>2){const q=t=>V[Math.min(V.length-1,Math.max(0,Math.round(t*(V.length-1))))];const lo=q((+P1||0)/100),hi=q((P2===""||P2==null?100:+P2)/100),pd=(hi-lo)*.04||Math.abs(hi)*.01||1;y.max=hi+pd;y.min=P1?lo-pd:(V[0]>=0&&y.beginAtZero?0:lo-pd)}
  if(a!==""&&a!=null)y.min=+a;if(b!==""&&b!=null)y.max=+b;ch.update()}
 // ---------- rango de fechas compartido (RF, FND, OPS) ----------
@@ -699,6 +700,9 @@ function fBar(id,o={}){const R=fpRow("Moneda",`<select id=${id}mo><option value=
  +(o.ops?fpRow("",`<label class=chk><input type=checkbox id=${id}op ${o.ops=="on"?"checked":""}> Solo con operaciones en el periodo</label>`):"");
  return `<input id=${id}q placeholder="Buscar título o emisor…" style="width:220px"> ${fPop(id,R)} <span id=${id}cnt class=cnt></span>`}
 function fGet(id){const v=k=>$(id+k)?($(id+k).type=="checkbox"?$(id+k).checked:$(id+k).value):"";return {q:v("q").toLowerCase(),mo:v("mo"),es:v("es"),v1:v("v1"),v2:v("v2"),r1:v("r1"),r2:v("r2"),md:v("md"),op:v("op"),cu1:v("cu1"),cu2:v("cu2"),pr1:v("pr1"),pr2:v("pr2"),vp1:v("vp1"),vp2:v("vp2"),mm1:v("mm1"),mm2:v("mm2"),ns1:v("ns1"),ns2:v("ns2")}}
+const FPH={r:["rend",2],cu:["cupon",2],pr:["precio",2],vp:["vp",2],mm:["mm",0],ns:["ns",0]};
+const phSet=(a,b,V,d)=>{V=V.filter(v=>v!=null&&isFinite(v));if(!a||!b)return;if(!V.length){a.placeholder=tr("mín");b.placeholder=tr("máx");return}const mn=Math.min(...V),mx=Math.max(...V),k=10**d;a.placeholder=tr("mín")+" "+f(Math.floor(mn*k)/k,d);b.placeholder=tr("máx")+" "+f(Math.ceil(mx*k)/k,d)};
+function fPh(id,O){Object.entries(FPH).forEach(([k,[fl,d]])=>phSet($(id+k+"1"),$(id+k+"2"),O.map(o=>o[fl]),d))}
 const fRg=(a,b,x)=>(a===""||a==null||(x!=null&&x>=+a))&&(b===""||b==null||(x!=null&&x<=+b));
 function fOk(F,o,sinRend){if(sinRend)F={...F,r1:"",r2:""};return (!F.mo||o.moneda==F.mo)&&(!F.es||(F.es=="ven")==(!!o.venc&&o.venc<=D.fecha))&&(!F.v1||(o.venc&&o.venc>=F.v1))&&(!F.v2||(o.venc&&o.venc<=F.v2))&&(F.r1===""||(o.rend!=null&&o.rend>=+F.r1))&&(F.r2===""||(o.rend!=null&&o.rend<=+F.r2))&&(!F.md||o.modo==F.md)&&fRg(F.cu1,F.cu2,o.cupon)&&fRg(F.pr1,F.pr2,o.precio)&&fRg(F.vp1,F.vp2,o.vp)&&fRg(F.mm1,F.mm2,o.mm)&&fRg(F.ns1,F.ns2,o.ns)&&(!F.q||(o.txt||"").toLowerCase().includes(F.q))}
 const fSinR=(F,L,map)=>(F.r1!==""||F.r2!=="")?L.filter(x=>{const o=map(x);return o.rend==null&&fOk(F,o,true)}).length:0;
@@ -714,7 +718,7 @@ function priPanel(el,merc="renta_fija",re){const rv=merc=="renta_variable",SRCP=
  <div class=src>Fuente: Boletín Consolidado BVRD, hojas de Mercado Primario (operaciones del día y registro en firme). Son ventas nuevas del emisor a los inversionistas; las subastas del Banco Central que no pasan por la BVRD no aparecen aquí. Una fila agrupa las órdenes del mismo día, título, precio y rendimiento.</div></div>`;
  const r=()=>{const F=fGet("p");
   const mp=p=>({moneda:p.moneda,venc:p.venc,rend:p.rend,modo:p.modo,cupon:p.cupon,precio:p.precio,mm:(p.monto_dop||0)/1e6,txt:p.titulo+" "+p.isin+" "+p.emisor+" "+(emiN(p)||"")+" "+(CATI[p.isin]?.adm||"")}),SR=SRCP.filter(inR);
-  const L=SR.filter(p=>fOk(F,mp(p))),exP=fSinR(F,SR,mp);
+  fPh("p",SR.map(mp));const L=SR.filter(p=>fOk(F,mp(p))),exP=fSinR(F,SR,mp);
   const tot=L.reduce((s,p)=>s+(p.monto_dop||0),0);$("pcnt").textContent=tr(`${L.length} colocaciones · RD$ ${f(tot/1e6,1)} MM`)+(exP?" · "+tr(`${exP} sin rendimiento excluidos`):"");
   const tu=L.filter(p=>p.moneda=="USD").reduce((s,p)=>s+(p.monto||0),0);if(tu)$("pcnt").textContent+=tr(` (incl. US$ ${f(tu/1e6,2)} MM)`);
   $("pl").innerHTML=L.length?priTbl(L,true,rv):`<p class=src>${tr("Sin colocaciones en el periodo.")}</p>`;reSort()};
@@ -727,7 +731,7 @@ function allPanel(el,merc){const rv=merc=="renta_variable",U=merc=="renta_fija"?
   U.forEach(x=>{const s=rst(x);if(s.n)M[x.isin]={vp:s.vp,isin:x.isin,titulo:x.titulo,emisor:emi[x.emisor]||x.nombre||x.emisor,moneda:x.moneda,cupon:x.cupon,venc:x.venc,tipo:x.tipo,p:s.p,y:s.y,ult:s.ult,neg:s.m,negu:s.mu,col:0,colu:0}});
   PRI.filter(p=>p.mercado==merc&&inR(p)).forEach(p=>{const o=M[p.isin]||(M[p.isin]={isin:p.isin,titulo:p.titulo,emisor:rv?(CATI[p.isin]?.adm||CATI[p.isin]?.emisor||p.emisor):emiN(p),moneda:p.moneda,cupon:p.cupon,venc:p.venc,p:p.precio,y:p.rend,ult:p.fecha,neg:0,negu:null,col:0,colu:0,po:1});o.col+=p.monto_dop||0;if(p.moneda=="USD")o.colu+=p.monto||0;if(p.fecha>o.ult)o.ult=p.fecha});
   const ma=o=>({moneda:o.moneda,venc:o.venc,rend:o.y,cupon:o.cupon,precio:o.p,vp:o.vp,mm:(o.col+o.neg)/1e6,txt:o.titulo+" "+o.isin+" "+o.emisor}),exA=fSinR(F,Object.values(M),ma);
-  const L=Object.values(M).filter(o=>fOk(F,ma(o))).sort((a,b)=>(b.col+b.neg)-(a.col+a.neg));
+  fPh("a",Object.values(M).map(ma));const L=Object.values(M).filter(o=>fOk(F,ma(o))).sort((a,b)=>(b.col+b.neg)-(a.col+a.neg));
   const tc=L.reduce((s,o)=>s+o.col,0),tn=L.reduce((s,o)=>s+o.neg,0);$("acnt").textContent=tr(`${L.length} títulos · colocado RD$ ${f(tc/1e6,1)} MM · negociado RD$ ${f(tn/1e6,1)} MM`)+(exA?" · "+tr(`${exA} sin rendimiento excluidos`):"");
   const mk=o=>o.col&&o.neg?"Ambos":o.col?"Primario":"Secundario",usd=o=>o.moneda=="USD"?MU((o.colu||0)+(o.negu||0)):"—";
   $("al").innerHTML=L.length?tbl(["Título",rv?"Emisor / Administradora":"Emisor","Mon.",...(rv?["Vencimiento"]:["Cupón %","Vencimiento"]),"Mercado","Último precio",...(rv?[]:["Rend. %"]),"Var. % periodo","Última op.","Colocado RD$ MM","Negociado RD$ MM","Total RD$ MM","Total US$ MM"],
@@ -737,7 +741,7 @@ function secPanel(el,merc){const rv=merc=="renta_variable",U=rv?RV:RF;
  el.innerHTML=`<div class=pn><h2>Mercado secundario${rv?" · fondos, fideicomisos y acciones":""}</h2><div class="ctl flt">${fBar("s",{rend:!rv,ops:"on",cu:!rv,vp:1,ns:1,rendL:"Rendimiento % (última operación)"})}</div><div id=sl></div><div class=src>${SRC} Precio, rendimiento y montos corresponden al periodo elegido; “Var. precio” compara las dos últimas sesiones con operaciones del título dentro del periodo.</div></div>`;
  const r=()=>{const F=fGet("s");
   const ms=({x,s})=>({moneda:x.moneda,venc:x.venc,rend:s.n?s.y:x.rend,cupon:x.cupon,precio:s.n?s.p:null,vp:s.vp,mm:s.m/1e6,ns:s.n,txt:x.titulo+" "+x.isin+" "+x.emisor+" "+(emi[x.emisor]||"")+" "+(x.nombre||"")}),U2=U.map(x=>({x,s:rst(x)})).filter(o=>!F.op||o.s.n>0),exS=fSinR(F,U2,ms);
-  const L=U2.filter(o=>fOk(F,ms(o))).sort((a,b)=>b.s.m-a.s.m||b.x.ui-a.x.ui);
+  fPh("s",U2.map(ms));const L=U2.filter(o=>fOk(F,ms(o))).sort((a,b)=>b.s.m-a.s.m||b.x.ui-a.x.ui);
   $("scnt").textContent=fCnt(L.length,exS);
   $("sl").innerHTML=rv?tbl(["Título","Nombre","Tipo","Mon.","Vencimiento","Último precio","Última op.","Var. precio","Var. % periodo","Sesiones con op.","Monto RD$ MM","Monto US$ MM"],L.map(({x,s})=>[x.titulo,(x.nombre||"").slice(0,40),x.tipo,x.moneda,venS(x.venc),s.n?f(s.p):"—",s.n?fdy(s.ult):"—",chgS(s.c),chgS(s.vp),s.n,s.n?MM(s.m):"—",MU(s.mu)]),[0,1,2],L.map(o=>o.x.isin))
    :tbl(["Título","Emisor","Mon.","Cupón %","Vencimiento","Último precio","Rend. %","Var. precio","Var. % periodo","Última op.","Sesiones con op.","Monto RD$ MM","Monto US$ MM"],L.map(({x,s})=>[x.titulo,emi[x.emisor]||x.emisor,x.moneda,f(x.cupon,3),venS(x.venc),s.n?f(s.p,4):"—",s.n?f(s.y,3):(x.rend!=null?`<span class=stale title="${tr("Sin operaciones en el periodo: último rendimiento conocido")}">${f(x.rend,3)} <small>${fdy(x.ult)}</small></span>`:"—"),chgS(s.c),chgS(s.vp),s.n?fdy(s.ult):"—",s.n,s.n?MM(s.m):"—",MU(s.mu)]),[0,1],L.map(o=>o.x.isin));reSort()};
@@ -753,7 +757,7 @@ function loadMonth(mes,cb){window.OPS=window.OPS||{};if(window.OPS[mes])return c
 var OPV="d",OPG={v:"m",b:"d",d:"t"};
 // gráfica de la pestaña Operaciones (usa las operaciones ya filtradas)
 function opsChart(L){kill();const w=$("ogw"),nt=$("ogn");if(!w)return;nt.textContent="";if(OPG.v=="off"){w.style.display="none";return}w.style.display="";
- const d1=$("ogd1")?.value,d2=$("ogd2")?.value;L=L.filter(o=>(!d1||o.f>=d1)&&(!d2||o.f<=d2));
+ 
  const PAL2=["#14233b","#e09a2c","#4a7fb5","#8fb3d9","#b06f12","#5b6b82","#c9d2dd"];
  if(OPG.v=="p"||OPG.v=="y"){const tops=Object.entries(L.reduce((a,o)=>{const k=String(o.t).trim();a[k]=(a[k]||0)+(o.md||0);return a},{})).sort((a,b)=>b[1]-a[1]).map(x=>x[0]),q=$("oq").value.trim().toLowerCase(),sel=tops.filter(t=>!q||t.toLowerCase().includes(q)).slice(0,OPG.d=="ti"?5:1);
   if(!sel.length){w.style.display="none";return}
@@ -771,7 +775,7 @@ function opsChart(L){kill();const w=$("ogw"),nt=$("ogn");if(!w)return;nt.textCon
  gLim("og",charts.at(-1),keys.map((_,i)=>V.reduce((a,s2)=>a+s2[i],0)))}
 function opsTab(){const m=$("main");
  m.innerHTML=`<div class=pn><h2>Operaciones</h2><div class="ctl flt">Vista ${seg("ov",[["d","Detalle"],["i","Por instrumento"]],OPV)} ${rngBar("or")} <input id=oq placeholder="Buscar título o emisor…" style="width:220px"> ${fPop("o",fpRow("Mercado",`<select id=omk><option value="">Todos</option><option value=rf>Renta fija</option><option value=rv>Renta variable</option></select>`)+fpRow("Moneda",`<select id=omo><option value="">Todas</option><option>DOP</option><option>USD</option></select>`)+fpRow("",`<label class=chk><input type=checkbox id=ofx> Solo fuera de mercado</label>`))} <span id=ocnt class=cnt></span></div>
- <div class=ctl>Gráfica ${seg("og",[["m","Monto RD$ MM"],["n","N.º de operaciones"],["p","Precio de cada operación"],["y","Rendimiento de cada operación"],["off","Ocultar"]],OPG.v)} Agrupar ${seg("ogb",[["d","Día"],["w","Semana"],["m","Mes"]],OPG.b)} Desglose ${seg("ogd",[["t","Total"],["mo","Moneda"],["mk","Mercado"],["ru","Rueda"],["ti","Top 5 títulos"]],OPG.d)} ${gCtl("og")}</div>
+ <div class=ctl>Gráfica ${seg("og",[["m","Monto RD$ MM"],["n","N.º de operaciones"],["p","Precio de cada operación"],["y","Rendimiento de cada operación"],["off","Ocultar"]],OPG.v)} Agrupar ${seg("ogb",[["d","Día"],["w","Semana"],["m","Mes"]],OPG.b)} Desglose ${seg("ogd",[["t","Total"],["mo","Moneda"],["mk","Mercado"],["ru","Rueda"],["ti","Top 5 títulos"]],OPG.d)} ${gCtl("og",1)}</div>
  <div id=ogw style="position:relative;height:min(280px,36vh);margin-bottom:12px"><canvas id=ogc></canvas></div><p id=ogn class=src></p><div id=ot>Cargando…</div><div id=omore style="text-align:center;margin:12px 0"></div><div class=src>${SRC} Operaciones del mercado secundario. ⚑ = operación fuera de mercado: cuenta para el volumen, pero no para el precio del día.</div></div>`;
  let lim=300;
  const draw=()=>{const ms=D.meses.filter(x=>x>=RNG.d1.slice(0,7)&&x<=RNG.d2.slice(0,7));$("ot").textContent=tr("Cargando…");
@@ -786,7 +790,7 @@ function opsTab(){const m=$("main");
     $("omore").innerHTML="";reSort();return}
    $("ot").innerHTML=(fail?`<p class=src>${tr("No se pudo cargar el archivo de operaciones de ese mes.")}</p>`:"")+(L.length?tbl(["Fecha","N.º operación","Rueda","Título","Emisor","Precio","Rend. %","Monto","Mon.","RD$ equiv."],L.slice(0,lim).map(o=>[fdy(o.f)+(isPre(o.f)?" (prel.)":""),o.id,o.ru,(o.fx?'<span class=fx title="Fuera de mercado: no se usa para el precio del día">⚑</span> ':"")+o.t,emi[o.e]||o.e,f(o.p,4),o.y!=null?f(o.y,3):"—",f(o.m,2),o.mo,f(o.md,2)]),[3,4]):`<p class=src>${tr("Sin operaciones en el periodo.")}</p>`);
    $("omore").innerHTML=L.length>lim?`<button class=selb id=omb>${tr("Mostrar más")} (${L.length-lim})</button>`:"";if($("omb"))$("omb").onclick=()=>{lim+=300;draw()};reSort()})};
- segBind("ov",v=>{OPV=v;lim=300;draw()});segBind("og",v=>{OPG.v=v;opsChart(window.OPL||[])});segBind("ogb",v=>{OPG.b=v;opsChart(window.OPL||[])});segBind("ogd",v=>{OPG.d=v;opsChart(window.OPL||[])});["ogd1","ogd2","ogy1","ogy2","ogp1","ogp2"].forEach(i=>$(i).onchange=()=>opsChart(window.OPL||[]));bindRng("or",()=>{lim=300;draw()});$("oq").oninput=()=>{lim=300;draw()};["omk","omo","ofx"].forEach(i=>$(i).onchange=()=>{lim=300;draw()});draw()}
+ segBind("ov",v=>{OPV=v;lim=300;draw()});segBind("og",v=>{OPG.v=v;opsChart(window.OPL||[])});segBind("ogb",v=>{OPG.b=v;opsChart(window.OPL||[])});segBind("ogd",v=>{OPG.d=v;opsChart(window.OPL||[])});["ogy1","ogy2","ogp1","ogp2"].forEach(i=>$(i).onchange=()=>opsChart(window.OPL||[]));bindRng("or",()=>{lim=300;draw()});$("oq").oninput=()=>{lim=300;draw()};["omk","omo","ofx"].forEach(i=>$(i).onchange=()=>{lim=300;draw()});draw()}
 const BYT={};D.ins.forEach(x=>BYT[x.titulo]=x);
 // ---------- barra de funciones (estilo terminal) ----------
 const FN=[["mercado","MKT","Mercado"],["rf","RF","Renta fija"],["rv","FND","Fondos y fideicomisos"],["cat","EMI","Emisiones"],["ops","OPS","Operaciones"],["puestos","PDB","Puestos de bolsa"],["noticias","NEWS","Noticias"],["portafolio","PORT","Portafolio"]];
