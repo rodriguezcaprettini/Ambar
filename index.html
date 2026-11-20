@@ -1342,6 +1342,7 @@ function gentePorCia(L,fn){const G={};L.forEach(p=>(G[pGrp(p)]=G[pGrp(p)]||[]).p
 // ================= HERRAMIENTAS DE TODAS LAS GRÁFICAS: guardar, imagen/PDF y Excel =================
 function grTitulo(ch){const gc=ch.canvas.closest(".grc");if(gc)return gc.querySelector("b").textContent;if(ch.canvas.id=="ogc"){const t=$("ogs")?.querySelector("b")?.textContent,v=document.querySelector("#og button.on")?.textContent;return [tr("Operaciones"),t,v,fd(RNG.d1)+" – "+fd(RNG.d2)].filter(Boolean).join(" · ")}const mt=location.hash.match(/^#t-(.+)/);if(mt&&BYI[mt[1]]&&ch.canvas.id=="tc"){const x=BYI[mt[1]],v=document.querySelector("#tv button.on")?.textContent;return [x.titulo,emi[x.emisor]||x.nombre||x.emisor,x.moneda,v].filter(Boolean).join(" · ")}const pn=ch.canvas.closest(".pn");let t=pn?.querySelector("h2")?.childNodes[0]?.textContent?.trim()||"";if(!t)t=pn?.querySelector("h2")?.textContent?.trim()||tr("Gráfica");return t.replace(/\s*⤓.*$/,"").slice(0,110)}
 const grXlin=ch=>ch.options?.scales?.x?.type=="linear";
+const grEsFecha=ch=>grXlin(ch)&&ch.data.datasets.some(d=>(d.data||[]).some(p=>p&&typeof p=="object"&&p.x>1e11));
 const grF=v=>new Date(v).toISOString().slice(0,10);
 function grFilas(ch){const DS=ch.data.datasets.filter((d,i)=>ch.isDatasetVisible(i));
  if(grXlin(ch)||!ch.data.labels?.length){const R=[[tr("Serie"),tr("Fecha"),tr("Valor")]];DS.forEach(d=>(d.data||[]).forEach(p=>{if(p&&typeof p=="object")R.push([d.label||"",grXlin(ch)?grF(p.x):p.x,p.y])}));return R}
@@ -1359,20 +1360,22 @@ function grPDF(c,nom){const jpg=atob(c.toDataURL("image/jpeg",.92).split(",")[1]
  add(`4 0 obj<</Type/XObject/Subtype/Image/Width ${W}/Height ${H}/ColorSpace/DeviceRGB/BitsPerComponent 8/Filter/DCTDecode/Length ${jpg.length}>>stream\n`+jpg+"\nendstream endobj\n");
  add(`5 0 obj<</Length ${cont.length}>>stream\n${cont}\nendstream endobj\n`);const xr=pdf.length;pdf+=`xref\n0 6\n0000000000 65535 f \n`+o.map(n=>String(n).padStart(10,"0")+" 00000 n \n").join("")+`trailer<</Size 6/Root 1 0 R>>\nstartxref\n${xr}\n%%EOF`;
  const b=new Uint8Array(pdf.length);for(let i=0;i<pdf.length;i++)b[i]=pdf.charCodeAt(i)&255;grBajar(URL.createObjectURL(new Blob([b],{type:"application/pdf"})),nom)}
-function grHojas(ch){const DS=ch.data.datasets.map((d,i)=>[d,i]).filter(([d,i])=>ch.isDatasetVisible(i));
- if(!grXlin(ch))return [[tr("Datos"),grFilas(ch)]];const usados=new Set();
- return DS.map(([d])=>{let n=(d.label||tr("Serie")).replace(/[\\/?*\[\]:]/g," ").slice(0,28);while(usados.has(n))n+="_";usados.add(n);const P=(d.data||[]).filter(p=>p&&typeof p=="object");
-  if(P.some(p=>p.o)){return [n,[[tr("Fecha"),tr("Título"),"N.º",tr("Rueda"),tr("Precio"),tr("Rend. %"),tr("Monto"),tr("Moneda"),tr("RD$ equiv."),tr("Fuera de mercado")],...P.map(p=>{const o=p.o;return [o.f,o.t,o.id,o.ru,o.p,o.y,o.m,o.mo,o.md,o.fx?tr("Sí"):""]})]]}
-  return [n,[[tr("Fecha"),d.label||tr("Valor")],...P.map(p=>[grF(p.x),p.y])]]})}
-function grInfo(ch){const R=[[tr("Gráfica"),grTitulo(ch)],[tr("Fecha de datos"),D.fecha]];
+function grHojas(ch){const DS=ch.data.datasets.filter((d,i)=>ch.isDatasetVisible(i));
+ if(!grXlin(ch))return [[tr("Datos"),grFilas(ch)]];
+ const fe=grEsFecha(ch),xt=ch.options.scales.x?.title?.text||(fe?tr("Fecha"):"X"),cols=DS.map(d=>d.label||tr("Serie")),tieneO=DS.some(d=>(d.data||[]).some(p=>p&&p.o)),tieneT=tieneO||DS.some(d=>(d.data||[]).some(p=>p&&p.t)),R=[];
+ DS.forEach((d,j)=>(d.data||[]).forEach(p=>{if(!p||typeof p!="object")return;const o=p.o,row=[fe?grF(p.x):+(+p.x).toFixed(4)];if(tieneT)row.push(o?o.t:(p.t||""));if(tieneO)row.push(o?(o.ru||""):"",o?o.m:"",o?o.mo:"",o?(o.fx?tr("Sí"):""):"");cols.forEach((_,k)=>row.push(k==j?p.y:""));R.push(row)}));
+ R.sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0);
+ const H=[fe?tr("Fecha"):xt,...(tieneT?[tr("Título")]:[]),...(tieneO?[tr("Rueda"),tr("Monto"),tr("Moneda"),tr("Fuera de mercado")]:[]),...cols];
+ return [[tr("Datos"),[H,...R]]]}
+function grInfo(ch){if(ch.$info)return ch.$info;const R=[[tr("Gráfica"),grTitulo(ch)],[tr("Fecha de datos"),D.fecha]];
  if(ch.canvas.id=="ogc"){const t=$("ogs")?.querySelector("b")?.textContent,x=t&&BYT[t];if(x)R.push([tr("Título"),x.titulo],["ISIN",x.isin],[tr("Emisor"),emi[x.emisor]||x.nombre||x.emisor],[tr("Moneda"),x.moneda]);R.push([tr("Periodo"),RNG.d1+" a "+RNG.d2])}
  const m=location.hash.match(/^#t-(.+)/);if(m&&BYI[m[1]]){const x=BYI[m[1]];R.push([tr("Título"),x.titulo],["ISIN",x.isin],[tr("Emisor"),emi[x.emisor]||x.nombre||x.emisor],[tr("Moneda"),x.moneda])}
  R.push([tr("Series"),ch.data.datasets.filter((d,i)=>ch.isDatasetVisible(i)).map(d=>d.label).filter(Boolean).join(", ")],[tr("Fuente"),"TERMINAL ÁMBAR · BVRD, Boletines Consolidados"]);return R}
 function grExportar(ch,fmt){const t=grTitulo(ch),nom=("Ambar_"+t.replace(/[^\wÁÉÍÓÚÑáéíóúñ -]/g,"").replace(/\s+/g,"_")+"_"+D.fecha).slice(0,90);
- if(fmt=="xlsx")return xlsx(nom,[[tr("Info"),grInfo(ch)],...grHojas(ch)]);
+ if(fmt=="xlsx")return xlsx(nom,[...grHojas(ch),[tr("Info"),grInfo(ch)]]);
  const c=grLienzo(ch,t);if(fmt=="pdf")return grPDF(c,nom+".pdf");grBajar(c.toDataURL(fmt=="jpg"?"image/jpeg":"image/png",.92),nom+"."+(fmt=="jpg"?"jpg":"png"))}
-function grConfig(ch){const lin=grXlin(ch);return {type:ch.config.type,lin,titulo:grTitulo(ch),labels:(ch.data.labels||[]).map(l=>Array.isArray(l)?l.join(" "):l),
- datasets:ch.data.datasets.filter((d,i)=>ch.isDatasetVisible(i)).map(d=>({type:d.type,label:d.label,data:(d.data||[]).map(p=>p&&typeof p=="object"?{x:p.x,y:p.y}:p),backgroundColor:d.backgroundColor,borderColor:d.borderColor,borderWidth:d.borderWidth,pointRadius:d.pointRadius,tension:d.tension,fill:d.fill,yAxisID:d.yAxisID,stack:d.stack,showLine:d.showLine,order:d.order,barThickness:d.barThickness})),
+function grConfig(ch){const lin=grEsFecha(ch);return {type:ch.config.type,lin,info:grInfo(ch),titulo:grTitulo(ch),labels:(ch.data.labels||[]).map(l=>Array.isArray(l)?l.join(" "):l),
+ datasets:ch.data.datasets.filter((d,i)=>ch.isDatasetVisible(i)).map(d=>({type:d.type,label:d.label,data:(d.data||[]).map(p=>p&&typeof p=="object"?Object.assign({x:p.x,y:p.y},p.t?{t:p.t}:{},p.o?{o:{f:p.o.f,t:p.o.t,ru:p.o.ru,m:p.o.m,mo:p.o.mo,fx:p.o.fx}}:{}):p),backgroundColor:d.backgroundColor,borderColor:d.borderColor,borderWidth:d.borderWidth,pointRadius:d.pointRadius,tension:d.tension,fill:d.fill,yAxisID:d.yAxisID,stack:d.stack,showLine:d.showLine,order:d.order,barThickness:d.barThickness})),
  scales:Object.fromEntries(Object.entries(ch.options.scales||{}).map(([k,v])=>[k,{type:v.type,stacked:v.stacked,position:v.position,beginAtZero:v.beginAtZero,min:v.min,max:v.max,display:v.display,title:v.title?{display:v.title.display,text:v.title.text}:undefined,grid:v.grid?{display:v.grid.display}:undefined,ticks:{display:v.ticks?.display}}]))}}
 async function grGuardar(ch){const t=prompt(tr("Nombre para esta gráfica:"),grTitulo(ch)+" · "+fd(D.fecha));if(t==null)return;
  const{error}=await sb.from("graficas").insert({titulo:(t.trim()||grTitulo(ch)).slice(0,120),ruta:location.hash.slice(1)||"mercado",config:grConfig(ch)});
@@ -1389,9 +1392,9 @@ async function misGraficas(){const m=$("main");m.innerHTML=`<div class=pn><h2>${
  const{data,error}=await sb.from("graficas").select("*").order("creado",{ascending:false});if(error){$("grl").textContent=error.message;return}
  if(!data.length){$("grl").innerHTML=`<p class=src>${tr("Todavía no has guardado gráficas. En cualquier gráfica, usa el botón ⋯ de la esquina → Guardar gráfica.")}</p>`;return}
  $("grl").innerHTML=`<div class=grgrid>${data.map(g=>`<div class=grc data-id=${g.id}><div class=grch><b>${esc(g.titulo)}</b><small>${tr("Guardada el")} ${fd(g.creado.slice(0,10))}</small><span><a class=lk data-a=ir>${tr("Ir a la pantalla")}</a> · <a class=lk data-a=ren>${tr("Renombrar")}</a> · <a class=lk data-a=del style="color:#c62828">${tr("Borrar")}</a></span></div><div class=grbox><canvas></canvas></div></div>`).join("")}</div>`;
- data.forEach(g=>{const el=m.querySelector(`.grc[data-id="${g.id}"]`),c=g.config,sc=JSON.parse(JSON.stringify(c.scales||{}));if(c.lin&&sc.x){sc.x.ticks={maxTicksLimit:8,callback:v=>fd(grF(v))}}
+ data.forEach(g=>{const el=m.querySelector(`.grc[data-id="${g.id}"]`),c=g.config,sc=JSON.parse(JSON.stringify(c.scales||{}));if(sc.x&&c.datasets.some(d=>(d.data||[]).some(p=>p&&typeof p=="object"&&p.x>1e11))){sc.x.ticks={maxTicksLimit:8,callback:v=>fd(grF(v))}}
   charts.push(new Chart(el.querySelector("canvas"),{type:c.type||"bar",data:{labels:c.labels,datasets:c.datasets},options:{maintainAspectRatio:false,animation:false,plugins:{legend:{display:c.datasets.length>1,labels:{boxWidth:10,font:{size:10}}}},scales:sc}}));
-  el.querySelector("[data-a=ir]").onclick=()=>go(g.ruta||"mercado");
+  el.querySelector("[data-a=ir]").onclick=()=>go(g.ruta||"mercado");charts.at(-1).$info=c.info;
   el.querySelector("[data-a=ren]").onclick=async()=>{const t=prompt(tr("Nuevo nombre:"),g.titulo);if(t&&t.trim()){await sb.from("graficas").update({titulo:t.trim().slice(0,120)}).eq("id",g.id);misGraficas()}};
   el.querySelector("[data-a=del]").onclick=async()=>{if(confirm(tr("¿Borrar esta gráfica guardada?"))){await sb.from("graficas").delete().eq("id",g.id);misGraficas()}}})}
 perfilInit();
