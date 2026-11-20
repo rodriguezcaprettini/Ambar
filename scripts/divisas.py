@@ -65,7 +65,9 @@ def main():
     df = next(iter(bajar("TASAS_CONVERTIBLES_OTRAS_MONEDAS.xlsx").values()))
     hdr = next(i for i in range(10) if sin(df.iat[i, 0]) == "ano")
     nombres = [str(x).strip().title() for x in df.iloc[hdr, 3:] if pd.notna(x)]
-    fx["otras"] = {"monedas": nombres, "rows": diaria(df.iloc[hdr + 1:], 3, len(nombres), 6)}
+    filas = diaria(df.iloc[hdr + 1:], 3, len(nombres), 4)
+    vivas = [i for i, n in enumerate(nombres) if not n.startswith("*") and any(r[i + 1] is not None for r in filas[-30:])]
+    fx["otras"] = {"monedas": [nombres[i].replace("Brasileno", "Brasileño").replace("Japones", "Japonés") for i in vivas], "rows": [[r[0]] + [r[i + 1] for i in vivas] for r in filas]}
     # 4) Sondeo de cotizaciones: dólar/euro × ventanilla/transferencia/cheque (entidades y agentes, compra y venta)
     fx["sondeo"] = {}
     for mon, mf in (("USD", "DOLAR"), ("EUR", "EURO")):
@@ -113,8 +115,11 @@ def main():
     cuerpo = {k: v for k, v in fx.items() if k != "actualizado"}
     h = hashlib.sha1(json.dumps(cuerpo, sort_keys=True).encode()).hexdigest()
     fx["hash"] = h
-    json.dump(fx, open(OUT, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
-    print("fx.json", os.path.getsize(OUT) // 1024, "KB")
+    import gzip
+    crudo = json.dumps(fx, ensure_ascii=False, separators=(",", ":")).encode()
+    open(OUT, "wb").write(crudo)
+    open(OUT + ".gz", "wb").write(gzip.compress(crudo, 9))
+    print("fx.json", len(crudo) // 1024, "KB · comprimido", os.path.getsize(OUT + ".gz") // 1024, "KB")
     if "--no-subir" in sys.argv: return
     sys.path.insert(0, os.path.dirname(__file__))
     import supa
@@ -122,7 +127,7 @@ def main():
     if supa.bajar_archivo("estado/fx_hash.txt", "data/fx_hash.txt"): anterior = open("data/fx_hash.txt").read().strip()
     if anterior == h:
         print("Sin cambios en los datos del Banco Central."); return
-    supa.subir_archivo(OUT, "fx.json")
+    supa.subir_archivo(OUT + ".gz", "fx.json.gz")
     open("data/fx_hash.txt", "w").write(h)
     supa.subir_archivo("data/fx_hash.txt", "estado/fx_hash.txt")
     print("Subido fx.json (datos nuevos).")
