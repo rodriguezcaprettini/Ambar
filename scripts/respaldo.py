@@ -63,7 +63,7 @@ def listar(bucket, prefijo=""):
 
 
 def main():
-    hoy = datetime.datetime.utcnow().strftime("%Y-%m-%d_%H%M")
+    hoy = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d_%H%M")
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         esq = rpc("ambar_esquema")
