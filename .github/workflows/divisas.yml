@@ -1,0 +1,27 @@
+# Robot de divisas: datos del Banco Central (mercado cambiario).
+# Lunes a viernes, cada hora de 4:00 PM a 12:00 AM hora RD (UTC-4) = 20:00 a 04:00 UTC.
+name: Divisas (Banco Central)
+on:
+  schedule:
+    - cron: "11 20-23 * * 1-5"   # 4:11 PM – 7:11 PM RD
+    - cron: "11 0-4 * * 2-6"     # 8:11 PM – 12:11 AM RD (ya es el día siguiente en UTC)
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency: divisas
+jobs:
+  divisas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.12" }
+      - run: pip install requests pandas openpyxl xlrd
+      - name: Descargar y preparar divisas
+        run: python scripts/divisas.py
+      - uses: actions/upload-artifact@v4
+        with: { name: fx, path: data/out/fx.json, retention-days: 3 }
