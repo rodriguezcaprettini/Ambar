@@ -200,12 +200,12 @@ main.dash td,main.dash th{padding:4px 8px!important;font-size:12.5px}
 #cmdbar nav button.on{background:#f4f6f9!important;color:#14233b!important;border-bottom:2px solid transparent!important;box-shadow:inset 0 3px 0 var(--gold)}
 #cmdbar nav button.on kbd{color:#a8701a}
 /* usuario y chat */
-.nbb{background:#0b1220;border-radius:6px;padding:4px 0 8px;font-size:13px;color:#e8edf5;border:1px solid #1d2a40}.nbhd{display:flex;justify-content:space-between;padding:6px 12px;font:700 11px var(--mono);letter-spacing:1.2px;color:#0b1220;background:#e3b35f;border-radius:5px 5px 0 0;margin:-4px 0 4px}
-.nbday{font:700 10.5px var(--mono);letter-spacing:1.4px;color:#e3b35f;padding:10px 12px 4px;border-bottom:1px solid #1d2a40}
-.nbr{display:grid;grid-template-columns:44px 92px 54px 1fr;align-items:baseline;gap:6px;padding:5px 12px;border-bottom:1px solid #141f33}.nbr:hover{background:#15223a}
-.nbn{font:500 11px var(--mono);color:#6b7d99;text-align:right}.nbt{font:600 11.5px var(--mono);color:#ffb347;white-space:nowrap}.nbs{font:700 10.5px var(--mono);color:#7cc4ff;letter-spacing:.6px}
-.nbh{color:#f2f5fa;text-decoration:none;font:500 13px Inter;line-height:1.35}.nbh:hover{color:#ffcf73;text-decoration:underline}.nbh mark{background:#e3b35f;color:#0b1220;padding:0 2px;border-radius:2px}
-.nbav{font:11px Inter;color:#ffcf73;padding:6px 12px;border-bottom:1px solid #1d2a40}
+.nbb{background:#fff;border:1px solid var(--ln);border-radius:6px;padding:0 0 6px;font-size:13px;color:#14233b}
+.nbday{font:600 10.5px var(--mono);letter-spacing:1.4px;color:#14233b;background:#f4f6f9;padding:7px 12px;border-top:1px solid var(--ln);border-bottom:1px solid var(--ln);box-shadow:inset 3px 0 0 var(--gold)}.nbday:first-child{border-top:0;border-radius:6px 6px 0 0}
+.nbr{display:grid;grid-template-columns:40px 86px 170px 1fr;align-items:baseline;gap:8px;padding:6px 12px;border-bottom:1px solid #eef1f5}.nbr:hover{background:#fbf6ec}
+.nbn{font:500 11px var(--mono);color:#a3adbb;text-align:right}.nbt{font:600 11.5px var(--mono);color:#a8701a;white-space:nowrap}.nbs{font:600 11px var(--mono);color:#5b6b82;letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nbh{color:#14233b;text-decoration:none;font:500 13px Inter;line-height:1.35}.nbh:hover{color:#a8701a;text-decoration:underline}.nbh mark{background:#f6e2b8;color:#14233b;padding:0 2px;border-radius:2px}
+.nbav{font:11px Inter;color:#a8701a;padding:6px 12px;border-bottom:1px solid #eef1f5}
 .colg{display:flex;flex-direction:column;gap:8px;margin:8px 0}.colg label{display:flex;align-items:center;gap:10px;font-size:13px}.colg input[type=color]{width:38px;height:26px;border:1px solid #c9d2dd;border-radius:4px;padding:1px;cursor:pointer}
 .blqi{font-style:normal;font-size:11px}.chbq{background:#f1f3f6;color:#5b6b82;font-size:11.5px;padding:6px 10px;border-top:1px solid #e3e8ee}
 .fxk{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}.fxkc{background:#fff;border:1px solid var(--ln);border-radius:6px;padding:8px 14px;display:flex;flex-direction:column;min-width:150px}.fxkc span{font:500 10px var(--mono);text-transform:uppercase;letter-spacing:.5px;color:#6b7789}.fxkc b{font:600 18px Inter;color:#14233b}.fxkc em{font-style:normal;font-size:11.5px}.fxkc small{font-size:10.5px;color:#8a97aa}
@@ -1002,8 +1002,8 @@ function noticias(){const m=$("main"),srcs=[...new Set([...FUENTES_N,...NEWS.map
  const hl=(t,q)=>{if(!q.length)return t;let o=t;q.forEach(w=>{const re=new RegExp("("+w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&").split("").map(ch=>({a:"[aáàä]",e:"[eéèë]",i:"[iíìï]",o:"[oóòö]",u:"[uúùü]",n:"[nñ]"}[ch]||ch)).join("")+")","gi");o=o.replace(re,"<mark>$1</mark>")});return o};
  const paint=()=>{const q=sinAc($("nq").value).split(/\s+/).filter(Boolean);
   $("ncnt").textContent=tr(`${total.toLocaleString("en-US")} titulares`);
-  let dia="",k=0;$("nl").innerHTML=rows.length?`<div class=nbb><div class=nbhd><span>${tr("TOP NOTICIAS · ECONOMÍA Y FINANZAS RD")}</span><span>${tr("Hora")} · ${tr("Fuente")} · ${tr("Titular")}</span></div>`+rows.map(n=>{const dd=n.d?nD(n):"",sep=dd!=dia?(dia=dd,`<div class=nbday>${dd?nDia(dd):tr("Sin fecha")}</div>`):"";k++;
-    return sep+`<div class=nbr><span class=nbn>${k})</span><span class=nbt>${esc(nH(n))}</span><span class=nbs title="${esc(n.s)}">${nCod(n.s)}</span><a class="nbh nt" href="${n.u}" target="_blank" rel="noopener" data-t="${esc(n.t)}">${hl(n.t,q)}</a></div>`}).join("")+`</div>`:`<p class=src>${tr("Sin resultados")}</p>`;
+  let dia="",k=0;$("nl").innerHTML=rows.length?`<div class=nbb>`+rows.map(n=>{const dd=n.d?nD(n):"",sep=dd!=dia?(dia=dd,`<div class=nbday>${dd?nDia(dd):tr("Sin fecha")}</div>`):"";k++;
+    return sep+`<div class=nbr><span class=nbn>${k})</span><span class=nbt>${esc(nH(n))}</span><span class=nbs>${esc(n.s)}</span><a class="nbh nt" href="${n.u}" target="_blank" rel="noopener" data-t="${esc(n.t)}">${hl(n.t,q)}</a></div>`}).join("")+`</div>`:`<p class=src>${tr("Sin resultados")}</p>`;
   if(LANG=="en")trTitulares($("nl"));
   $("nmore").innerHTML=total>rows.length?`<button class=selb id=nmb>${tr("Mostrar más")} (${(total-rows.length).toLocaleString("en-US")})</button>`:"";if($("nmb"))$("nmb").onclick=()=>load(true)};
  const args=()=>({q:$("nq").value,s:$("nsrc").value,d1:$("nd1").value,d2:$("nd2").value});
