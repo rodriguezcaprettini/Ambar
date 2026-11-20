@@ -22,3 +22,4 @@ jobs:
         with: { python-version: "3.12" }
       - run: pip install requests pandas openpyxl xlrd
       - name: Descargar y preparar divisas
+        run: python scripts/divisas.py
