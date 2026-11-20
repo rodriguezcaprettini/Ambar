@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with: { python-version: "3.12" }
-      - run: pip install requests pandas openpyxl beautifulsoup4 pdfplumber
+      - run: pip install requests pandas openpyxl beautifulsoup4
       - name: Traer estado desde Supabase
         run: python scripts/supa.py bajar-estado
       - name: Boletín BVRD del día (servidor)
@@ -36,9 +36,6 @@ jobs:
           }
       - name: Noticias
         run: python scripts/noticias.py
-      - name: Fechas de emisión del Banco Central
-        continue-on-error: true
-        run: python scripts/bcrd_emisiones.py
       - name: Preparar datos de la terminal
         run: python scripts/build_data.py
       - name: Subir a Supabase (almacenamiento privado)

@@ -139,13 +139,8 @@ if os.path.exists("data/puestos.csv") and os.path.getsize("data/puestos.csv") > 
                 PUE += [["_prev", r.fecha, r.seg, str(r.part).strip(), num(r.mes, 2), num(r.anio, 2), num(r.anio_usd, 2)] for r in g[g.fecha == fs[-2]].itertuples()]
 print(f"Puestos de bolsa: {len(PUE)} filas")
 
-try:
-    EMIS = json.load(open("data/emisiones_bcrd.json", encoding="utf-8"))  # fechas de emisión de Notas y Letras del Banco Central
-except FileNotFoundError:
-    EMIS = {}
-
 D = {"prelim": prelim, "fecha": fechas[-1], "fechas": fechas, "fx": fx, "ruedas": ruedas, "meses": meses, "ins": ins, "s": S,
-     "cat": cat[cols].replace({np.nan: None}).to_dict("records"), "pri": {"cols": PRI_COLS, "rows": PRI}, "pue": {"cols": PUE_COLS, "rows": PUE}, "emis": EMIS}
+     "cat": cat[cols].replace({np.nan: None}).to_dict("records"), "pri": {"cols": PRI_COLS, "rows": PRI}, "pue": {"cols": PUE_COLS, "rows": PUE}}
 try:
     noticias = json.load(open("data/noticias.json", encoding="utf-8"))
 except FileNotFoundError:
