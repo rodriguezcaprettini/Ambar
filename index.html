@@ -200,6 +200,8 @@ main.dash td,main.dash th{padding:4px 8px!important;font-size:12.5px}
 #cmdbar nav button.on{background:#f4f6f9!important;color:#14233b!important;border-bottom:2px solid transparent!important;box-shadow:inset 0 3px 0 var(--gold)}
 #cmdbar nav button.on kbd{color:#a8701a}
 /* cinta */
+.mdate{width:92px;padding:4px 6px;border:1px solid #c9d1dc;border-radius:4px;font:600 11px var(--mono);letter-spacing:1px;text-transform:uppercase;color:#14233b}.mdate.bad{border-color:#d63b30;color:#d63b30}
+.mseg .kerr{white-space:nowrap}.mcal{background:none;border:0;cursor:pointer;font-size:13px;padding:0 2px}.mseg{position:relative}
 .lgd{font:500 10px var(--mono);color:#6b7789;margin-left:8px;letter-spacing:.4px}.lgd i{display:inline-block;width:9px;height:9px;border-radius:2px;margin:0 3px 0 6px;vertical-align:-1px}
 .tcal{flex:none;background:none;border:0;cursor:pointer;font-size:13px;padding:0 4px;margin-left:-6px;margin-right:6px;opacity:.85;filter:grayscale(.2)}.tcal:hover{opacity:1}.ks0 .tcal{margin:0 0 0 2px}
 .tpick{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;border:0;padding:0}.tape,.ks0{position:relative}
@@ -609,6 +611,10 @@ function pueData(seg){const R=PUE.filter(r=>(seg=="tot"?PSEG.some(x=>x[0]!="tot"
  const YU={},MU={};ms.forEach(m=>{YU[m]={};R.filter(r=>r.m==m&&r.anio_usd!=null).forEach(r=>YU[m][r.part]=(YU[m][r.part]||0)+r.anio_usd)});
  ms.forEach((m,i)=>{const pv=i&&ms[i-1].slice(0,4)==m.slice(0,4)?YU[ms[i-1]]:{};MU[m]={};Object.keys(YU[m]).forEach(p=>{const v=YU[m][p]-(pv[p]||0);if(v>0)MU[m][p]=v})});
  return {ms,MO,MU,yrs,YR,YF,FE,USD,parts}}
+const mL=v=>v?MES3[LANG=="en"?"en":"es"][+v.slice(5,7)-1]+"-"+v.slice(0,4):"";
+function mParse(t){t=String(t||"").trim().toUpperCase();let m;if(m=t.match(/^(\d{4})[-\/ ](\d{1,2})$/))return +m[2]>=1&&+m[2]<=12?m[1]+"-"+m[2].padStart(2,"0"):null;
+ if(m=t.match(/^(\d{1,2})[-\/ .](\d{4})$/))return +m[1]>=1&&+m[1]<=12?m[2]+"-"+m[1].padStart(2,"0"):null;
+ if(m=t.match(/^([A-Z]{3})[A-Z]*[-\/ .]?(\d{4})$/)){const k=[...MES3.es,...MES3.en].indexOf(m[1]);return k<0?null:m[2]+"-"+String(k%12+1).padStart(2,"0")}return null}
 function puestosV(){const m=$("main");if(!PUE.length){m.innerHTML=`<div class=pn><h2>Puestos de bolsa</h2><p class=src>Los datos por puesto se están cargando. Vuelve a intentar más tarde.</p></div>`;return}
  const P=pueData(PDB.seg);if(!P.ms.length){m.innerHTML=`<div class=pn><p class=src>${tr("Sin volumen en el periodo.")}</p></div>`;return}
  const LF=P.FE[P.ms.at(-1)];if(!PDB.d1||PDB.d1.length!=7){PDB.d1=LF.slice(0,4)+"-01";PDB.d2=LF.slice(0,7)}if(PDB.d1>PDB.d2)[PDB.d1,PDB.d2]=[PDB.d2,PDB.d1];
@@ -617,7 +623,7 @@ function puestosV(){const m=$("main");if(!PUE.length){m.innerHTML=`<div class=pn
  const perL=RM.length?(RM.length==1?mesL(RM[0]):mesL(RM[0])+" – "+mesL(RM.at(-1)))+(RM.at(-1)==P.ms.at(-1)?" ("+tr("al")+" "+fd(LF)+")":""):"—";
  const rank=o=>Object.entries(o||{}).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]),L=rank(cur),tot=L.reduce((s,[,v])=>s+v,0),PR={};rank(prv).forEach(([p],i)=>PR[p]=i+1);
  const rk=PUE.filter(r=>r.seg=="ranking"),rkm=RM.at(-1),RK=rkm?rk.filter(r=>r.m==rkm).sort((a,b)=>b.mes-a.mes):[];
- m.innerHTML=`<div class=mseg>Mercado ${seg("pseg",PSEG,PDB.seg)} Desde <input type=month id=pd1 value="${PDB.d1}" min="${P.ms[0]}" max="${P.ms.at(-1)}"> Hasta <input type=month id=pd2 value="${PDB.d2}" min="${P.ms[0]}" max="${P.ms.at(-1)}"> <span class=cnt>${tr("Datos mensuales de la BVRD.")}</span></div>
+ m.innerHTML=`<div class=mseg>Mercado ${seg("pseg",PSEG,PDB.seg)} Desde <input id=pd1 class="mdate notr" value="${mL(PDB.d1)}" placeholder="MMM-AAAA" title="MMM-AAAA · Enter" spellcheck=false autocomplete=off><button type=button class=mcal data-for=pd1 title="${tr("Calendario")}">&#128197;</button><input type=month class=tpick data-m=pd1 min="${P.ms[0]}" max="${P.ms.at(-1)}" tabindex=-1> Hasta <input id=pd2 class="mdate notr" value="${mL(PDB.d2)}" placeholder="MMM-AAAA" title="MMM-AAAA · Enter" spellcheck=false autocomplete=off><button type=button class=mcal data-for=pd2 title="${tr("Calendario")}">&#128197;</button><input type=month class=tpick data-m=pd2 min="${P.ms[0]}" max="${P.ms.at(-1)}" tabindex=-1> <b id=pderr class=kerr></b> <span class=cnt>${tr("Datos mensuales de la BVRD.")}</span></div>
  <div class=grid style="grid-template-columns:1.1fr 1fr;align-items:start">
  <div class=pn><h2>Volumen por puesto · ${PSEG.find(s=>s[0]==PDB.seg)[1]} · ${perL}</h2>${L.length?tbl(["#","Puesto / participante","Monto RD$ MM",...(hasU?["De eso en US$ MM"]:[]),"Participación %","Posición anterior"],L.map(([p,v],i)=>[i+1,p,MM(v),...(hasU?[usd[p]?MU(usd[p]):"—"]:[]),f(v/tot*100,1)+"%",PR[p]?(PR[p]==i+1?"= "+PR[p]:(PR[p]>i+1?`<span class=up>▲ ${PR[p]}</span>`:`<span class=dn>▼ ${PR[p]}</span>`)):"nuevo"]),[1]):"<p class=src>Sin volumen en el periodo.</p>"}
  <div class=src>Total del periodo: RD$ ${MM(tot)} MM. Fuente: Boletín Consolidado BVRD, volumen transado por participante (equivalente en RD$). Cada operación cuenta para el puesto comprador y para el vendedor, así que la suma de los puestos es cerca del doble del volumen del mercado; la participación % sí es comparable. El monto de cada mes se calcula como la diferencia entre acumulados del año. “Posición anterior” compara con el mismo número de meses justo antes del rango. El boletín no informa qué puesto transó cada título.</div></div>
@@ -640,7 +646,10 @@ function puestosV(){const m=$("main");if(!PUE.length){m.innerHTML=`<div class=pn
  if(hasO)ds.push({label:tr("Otros"),data:keys.map(k=>share(k,g=>Object.entries(g).filter(([p])=>!tops.includes(p)).reduce((s,[,v])=>s+v,0))),backgroundColor:OTR});
  charts.push(new Chart($("pch"),{type:"bar",data:{labels:keys.map(gl),datasets:ds},options:{maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{boxWidth:10,font:{size:11}}},tooltip:{mode:"index",callbacks:{label:c=>`${c.dataset.label}: ${f(c.raw,1)}%`}}},scales:{x:{stacked:true},y:{stacked:true,max:100,ticks:{callback:v=>v+"%"},title:{display:true,text:"% del volumen"}}}}}));
  const rr=()=>{puestosV();setTimeout(()=>{xlBtns();reSort()},0)};
- $("pd1").onchange=e=>{if(e.target.value){PDB.d1=e.target.value;rr()}};$("pd2").onchange=e=>{if(e.target.value){PDB.d2=e.target.value;rr()}};segBind("pgr",v=>{PDB.gr=v;rr()});segBind("ptop",v=>{PDB.top=v;rr()})}
+ ["pd1","pd2"].forEach(id=>{const el=$(id),ap=()=>{const v=mParse(el.value);if(!v){$("pderr").textContent=LANG=="en"?"ERROR! USE MMM-YYYY":"¡ERROR! USA MMM-AAAA";el.classList.add("bad");return}if(id=="pd1")PDB.d1=v;else PDB.d2=v;rr()};
+  el.onkeydown=e=>{if(e.key=="Enter"){e.preventDefault();ap()}};el.onblur=()=>{if(el.value!=mL(id=="pd1"?PDB.d1:PDB.d2))ap()};
+  const pk=document.querySelector(`.tpick[data-m=${id}]`);pk.onchange=()=>{if(pk.value){el.value=mL(pk.value);ap()}};
+  el.nextElementSibling.onclick=()=>{pk.value=id=="pd1"?PDB.d1:PDB.d2;try{pk.showPicker()}catch(_){pk.focus()}}});segBind("pgr",v=>{PDB.gr=v;rr()});segBind("ptop",v=>{PDB.top=v;rr()})}
 const emiSeg=()=>`<div class=mseg>Emisiones ${seg("emv",[["vig","Vigentes"],["ven","Vencidas"]],EMV)}</div>`;
 function bindEmv(){segBind("emv",v=>{EMV=v;show("cat")})}
 function vencidas(){const m=$("main"),seen=new Set(),V=[];
