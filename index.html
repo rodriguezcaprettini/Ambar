@@ -1018,8 +1018,8 @@ const pSubE=p=>[pSub(p),estTxt(p.id)].filter(Boolean).join(" · ");
 async function avLoad(list){const need=[...new Set(list.map(p=>p&&p.foto).filter(f=>f&&!AV[f]))];if(!need.length)return;const{data}=await sb.storage.from("avatars").createSignedUrls(need,3600*12);(data||[]).forEach(d=>{if(d.signedUrl)AV[d.path]=d.signedUrl})}
 async function perfiles(ids){const f=ids.filter(i=>!PF[i]);if(f.length){const{data}=await sb.from("perfiles").select("*").in("id",f);(data||[]).forEach(p=>PF[p.id]=p)}await avLoad(ids.map(i=>PF[i]))}
 // sonido suave (dos notas) al recibir mensajes
-let ACX=null;const sndOn=()=>{try{return localStorage.getItem("ambar_snd")!=="0"}catch(e){return true}};
-function zumbido(){if(!sndOn())return;try{ACX=ACX||new (window.AudioContext||window.webkitAudioContext)();const t=ACX.currentTime;[[880,0],[1318.5,.11]].forEach(([fq,d])=>{const o=ACX.createOscillator(),g=ACX.createGain();o.type="sine";o.frequency.value=fq;g.gain.setValueAtTime(0,t+d);g.gain.linearRampToValueAtTime(.12,t+d+.02);g.gain.exponentialRampToValueAtTime(.0001,t+d+.45);o.connect(g).connect(ACX.destination);o.start(t+d);o.stop(t+d+.5)})}catch(e){}}
+let ACX=null;const acxOn=()=>{try{ACX=ACX||new (window.AudioContext||window.webkitAudioContext)();if(ACX.state=="suspended")ACX.resume()}catch(e){}};["pointerdown","keydown"].forEach(ev=>document.addEventListener(ev,acxOn,{passive:true}));const sndOn=()=>{try{return localStorage.getItem("ambar_snd")!=="0"}catch(e){return true}};
+function zumbido(){if(!sndOn())return;try{acxOn();const t=ACX.currentTime;[[880,0],[1318.5,.11]].forEach(([fq,d])=>{const o=ACX.createOscillator(),g=ACX.createGain();o.type="sine";o.frequency.value=fq;g.gain.setValueAtTime(0,t+d);g.gain.linearRampToValueAtTime(.12,t+d+.02);g.gain.exponentialRampToValueAtTime(.0001,t+d+.45);o.connect(g).connect(ACX.destination);o.start(t+d);o.stop(t+d+.5)})}catch(e){}}
 
 // ---------- perfil obligatorio ----------
 async function perfilInit(){const{data:{session}}=await sb.auth.getSession();if(!session)return;ME.id=session.user.id;ME.email=session.user.email;
@@ -1105,8 +1105,8 @@ const noLeidos=c=>(CMSG[c]||[]).filter(m=>m.user_id!=ME.id&&m.creado>miLeido(c))
 const convOtro=c=>(CMEM[c.id]||[]).map(m=>m.user_id).find(u=>u!=ME.id);
 const convNom=c=>c.tipo=="grupo"?c.nombre:pNom(PF[convOtro(c)]);
 async function marcarLeido(c){const now=new Date().toISOString(),m=(CMEM[c]||[]).find(m=>m.user_id==ME.id);if(m)m.leido=now;await sb.from("miembros").update({leido:now}).eq("conv_id",c).eq("user_id",ME.id);chatBadge()}
-function chatBadge(){const n=CONVS.reduce((s,c)=>s+noLeidos(c.id),0),b=$("chbn");if(b)b.textContent=n?n:"";$("chdock")?.classList.toggle("nuevo",!!n)}
-async function chatInit(){if($("chdock"))return;const lat=()=>sb.rpc("latido");lat();setInterval(()=>{if(document.visibilityState=="visible")lat()},60000);document.addEventListener("visibilitychange",()=>{if(document.visibilityState=="visible")lat()});
+const TIT0=document.title;function chatBadge(){const n=CONVS.reduce((s,c)=>s+noLeidos(c.id),0),b=$("chbn");document.title=(n?`(${n}) `:"")+TIT0;if(b)b.textContent=n?n:"";$("chdock")?.classList.toggle("nuevo",!!n)}
+async function chatInit(){if($("chdock"))return;const lat=()=>sb.rpc("latido");lat();setInterval(lat,45000);window.addEventListener("focus",lat);document.addEventListener("visibilitychange",()=>{if(document.visibilityState=="visible")lat()});
  setInterval(async()=>{if(!CHV.open)return;await estCargar([...Object.keys(PF)].filter(i=>i!=ME.id));if(CHV.view=="list")chatDraw(true);else if(CHV.view=="conv"){const c=CONVS.find(c=>c.id==CHV.conv),o=c&&c.tipo=="dm"&&PF[convOtro(c)],el=document.querySelector(".chhn small");if(o&&el)el.textContent=pSubE(o)}},60000);const d=document.createElement("div");d.id="chdock";d.className="min";document.body.appendChild(d);
  d.innerHTML=`<div class=chbar id=chbar><span>💬 ${tr("Chat")} <b id=chbn></b></span><span class=chbx><a id=chmin title="${tr("Minimizar")}">▁</a></span></div><div class=chbody id=chbody></div>`;
  $("chbar").onclick=()=>{CHV.open=!CHV.open;d.classList.toggle("min",!CHV.open);if(CHV.open)chatDraw()};
