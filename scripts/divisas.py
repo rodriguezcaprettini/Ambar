@@ -54,6 +54,108 @@ def diaria(df, c0=3, n=2, d=4):
     return out
 
 
+# ---------- PDF "Hoy": el dato del día, que llega antes que los Excel ----------
+MESL = {"enero": 1, "febrero": 2, "marzo": 3, "abril": 4, "mayo": 5, "junio": 6, "julio": 7, "agosto": 8, "septiembre": 9, "setiembre": 9, "octubre": 10, "noviembre": 11, "diciembre": 12}
+
+
+def pdf_texto(f):
+    import pdfplumber
+    r = requests.get(B + f, headers=UA, timeout=90)
+    r.raise_for_status()
+    return pdfplumber.open(io.BytesIO(r.content))
+
+
+def poner(rows, fila):
+    """Inserta o reemplaza la fila de esa fecha (los PDF del día mandan sobre el Excel si difieren)."""
+    for i, r in enumerate(rows):
+        if r[0] == fila[0]:
+            rows[i] = fila; return "act"
+    rows.append(fila); rows.sort(key=lambda x: x[0]); return "nuevo"
+
+
+def hoy_referencia(fx):
+    import re
+    with pdf_texto("tasaus_mc.pdf") as p:
+        t = " ".join((pg.extract_text() or "") for pg in p.pages)
+    t = re.sub(r"\s+", " ", t)
+    m = re.search(r"cierre del (\d{1,2}) de ([a-záéíóú]+) de (\d{4}), son de RD\$\s*([\d.,]+)\s*/US\$ y RD\$\s*([\d.,]+)", t, re.I)
+    if not m: print("referencia PDF: formato no reconocido"); return
+    f = f"{int(m[3]):04d}-{MESL[sin(m[2])]:02d}-{int(m[1]):02d}"
+    print("referencia PDF", f, poner(fx["ref"], [f, float(m[4].replace(",", "")), float(m[5].replace(",", ""))]))
+
+
+def hoy_otras(fx):
+    import re
+    with pdf_texto("TMC4001.pdf") as p:
+        t = "\n".join((pg.extract_text() or "") for pg in p.pages)
+    m = re.search(r"CORRESPONDIENTES AL \w+ (\d{1,2}) DE ([A-ZÁÉÍÓÚ]+) DE (\d{4})", t, re.I)
+    if not m: print("otras PDF: formato no reconocido"); return
+    f = f"{int(m[3]):04d}-{MESL[sin(m[2])]:02d}-{int(m[1]):02d}"
+    vals = {}
+    for ln in t.splitlines():
+        q = re.match(r"^[A-Z]{3}\s+(.+?)\*{0,3}\s+([\d.]+)$", ln.strip())
+        if q: vals[sin(q[1]).replace("*", "").strip()] = float(q[2])
+    fila = [f] + [vals.get(sin(n).replace("*", "").strip()) for n in fx["otras"]["monedas"]]
+    if sum(v is not None for v in fila[1:]) >= len(fila[1:]) // 2:
+        print("otras PDF", f, poner(fx["otras"]["rows"], fila))
+
+
+def hoy_sondeo(fx):
+    import re
+    for mon, mf in (("USD", "DOLAR"), ("EUR", "EURO")):
+        for ins, inf in (("ventanilla", "VENTANILLA"), ("transferencia", "TRANSFERENCIA"), ("cheque", "CHEQUE")):
+            try:
+                with pdf_texto(f"SONDEO_{inf}_{mf}.pdf") as p:
+                    t = "\n".join((pg.extract_text() or "") for pg in p.pages)
+                L = re.findall(r"^(\d{2})/(\d{2})/(\d{2}) ([\d.]+) - ([\d.]+) -$", t, re.M)
+                if len(L) < 2: continue
+                (d, mm, a, c1, v1), (_, _, _, c2, v2) = L[0], L[1]
+                f = f"20{a}-{mm}-{d}"
+                k = f"{mon}_{ins}"
+                print("sondeo PDF", k, f, poner(fx["sondeo"].setdefault(k, []), [f, float(c1), float(v1), float(c2), float(v2)]))
+            except Exception as e:
+                print("sondeo PDF", mon, ins, "error:", e)
+
+
+def hoy_promedio(fx):
+    """TAC4009: tabla del año (días × meses, compra y venta). Se leen las palabras por su posición."""
+    import re
+    for clave, f in (("ef", "PRI"), ("ag", "AGE")):
+        anio = pd.Timestamp.now(tz="America/Santo_Domingo").year
+        try:
+            with pdf_texto(f"TAC4009_{f}_{anio}.pdf") as p:
+                pg = p.pages[0]
+                W = pg.extract_words()
+            hdr = [w for w in W if w["text"] in ("Compra", "Venta")]
+            hdr.sort(key=lambda w: w["x0"])
+            if not hdr: continue
+            cent = [(w["x0"] + w["x1"]) / 2 for w in hdr]
+            filas = {}
+            for w in W:
+                filas.setdefault(round(w["top"]), []).append(w)
+            n = 0
+            for top, ws in filas.items():
+                ws.sort(key=lambda w: w["x0"])
+                if not re.fullmatch(r"\d{2}", ws[0]["text"]) or ws[0]["x1"] > cent[0]: continue
+                dia = int(ws[0]["text"])
+                cel = {}
+                for w in ws[1:]:
+                    if not re.fullmatch(r"\d+\.\d+", w["text"]): continue
+                    x = (w["x0"] + w["x1"]) / 2
+                    k = min(range(len(cent)), key=lambda i: abs(cent[i] - x))
+                    cel[k] = float(w["text"])
+                for mes in range(len(cent) // 2):
+                    c, v = cel.get(2 * mes), cel.get(2 * mes + 1)
+                    if c is None and v is None: continue
+                    fe = f"{anio:04d}-{mes + 1:02d}-{dia:02d}"
+                    ult = fx[clave][-1][0] if fx[clave] else ""
+                    if fe > ult or fe >= (pd.Timestamp(ult) - pd.Timedelta(days=7)).strftime("%Y-%m-%d"):
+                        poner(fx[clave], [fe, c, v]); n += 1
+            print("promedio PDF", clave, n, "filas recientes", fx[clave][-1])
+        except Exception as e:
+            print("promedio PDF", clave, "error:", e)
+
+
 def main():
     fx = {"fuente": "Banco Central de la República Dominicana · Mercado cambiario"}
     # 1) Referencia (spot): tasa de cambio de referencia del mercado, desde 1991
@@ -105,6 +207,9 @@ def main():
             v = [num(x, 3) for x in r[2:14]]
             if any(x is not None for x in v): filas.append([f"{ano:04d}-{mm:02d}"] + v)
     fx["volumen"] = {"cols": ["ef_net_c", "ef_net_v", "ef_br_c", "ef_br_v", "ag_net_c", "ag_net_v", "ag_br_c", "ag_br_v", "tot_net_c", "tot_net_v", "tot_br_c", "tot_br_v"], "rows": filas}
+    for paso in (hoy_referencia, hoy_otras, hoy_sondeo, hoy_promedio):
+        try: paso(fx)
+        except Exception as e: print(paso.__name__, "error:", e)
     fx["actualizado"] = pd.Timestamp.now(tz="America/Santo_Domingo").strftime("%Y-%m-%d %H:%M")
     for k in ("ref", "ef", "ag", "der"): print(k, len(fx[k]), fx[k][-1] if fx[k] else None)
     print("otras", len(fx["otras"]["rows"]), fx["otras"]["monedas"])
