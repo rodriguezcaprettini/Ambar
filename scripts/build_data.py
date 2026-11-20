@@ -74,9 +74,10 @@ S = [[FI[r.fecha], IX[r.isin], RI[r.rueda], round(r.m / 1e6, 3), int(r.n)] for r
 
 cat = e.rename(columns={"Código ISIN": "isin", "Nemotécnico Local": "titulo", "Emisor": "emisor", "Administradora": "adm",
                         "Moneda": "moneda", "Tasa Vigente (%)": "tasa", "Tasa Fija (F) o Var. (V)": "tipo_tasa",
-                        "Fecha de Vencimiento": "venc", "Monto de Emisión": "monto", "Periodic. Pagos": "pago"})
+                        "Fecha de Vencimiento": "venc", "Monto de Emisión": "monto", "Periodic. Pagos": "pago", "Fecha de Emisión": "emision"})
 cat["venc"] = pd.to_datetime(cat.venc, errors="coerce").dt.date.astype(str)
-cols = [c for c in ["mercado", "isin", "titulo", "emisor", "adm", "moneda", "tasa", "tipo_tasa", "venc", "pago", "monto"] if c in cat]
+if "emision" in cat: cat["emision"] = pd.to_datetime(cat.emision, errors="coerce").dt.date.astype(str).replace("NaT", None)
+cols = [c for c in ["mercado", "isin", "titulo", "emisor", "adm", "moneda", "tasa", "tipo_tasa", "venc", "emision", "pago", "monto"] if c in cat]
 
 # Operaciones por mes (archivos aparte)
 OPS_COLS = ["fecha", "id", "rueda", "titulo", "emisor", "precio", "rendimiento", "monto", "moneda", "monto_dop", "fuera"]
