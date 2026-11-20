@@ -1,9 +1,9 @@
-# Robot de noticias de Ámbar: revisa titulares nuevos cada 30 minutos, todos los días.
+# Robot de noticias de Ámbar: revisa titulares nuevos cada 15 minutos, todos los días.
 # GitHub puede retrasar unos minutos las corridas programadas cuando sus servidores están cargados.
-name: Noticias cada 30 minutos
+name: Noticias cada 15 minutos
 on:
   schedule:
-    - cron: "7,37 * * * *"   # minuto 7 y 37 de cada hora (evita el minuto 0, que GitHub suele retrasar)
+    - cron: "7,22,37,52 * * * *"   # cada 15 minutos (evita el minuto 0, que GitHub suele retrasar)
   workflow_dispatch: {}
 permissions:
   contents: read
