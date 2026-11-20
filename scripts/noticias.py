@@ -103,7 +103,7 @@ def banco_central(pagina=0, tam=15):
         for it in r.json()["result"]["items"]:
             f = (it.get("auxiliarDatetime1") or "")[:10]
             fc, hc = a_rd(it.get("creationTime"))
-            if not f or f.startswith("0001"): f = fc
+            if not f or f < "1990": f = fc  # fecha auxiliar vacía o de relleno (0001, 1900): se usa la de creación
             out.append({"s": "Banco Central", "t": limpio(it["title"]), "u": f"https://www.bancentral.gov.do/a/d/{it['stringId']}",
                         "c": cat, "d": f, "h": hc if fc == f else None})
     return out
