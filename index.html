@@ -200,6 +200,7 @@ main.dash td,main.dash th{padding:4px 8px!important;font-size:12.5px}
 #cmdbar nav button.on{background:#f4f6f9!important;color:#14233b!important;border-bottom:2px solid transparent!important;box-shadow:inset 0 3px 0 var(--gold)}
 #cmdbar nav button.on kbd{color:#a8701a}
 /* usuario y chat */
+.seg.off button.on{background:transparent!important;color:inherit!important;box-shadow:none!important}
 .chst{flex:1;text-align:right;margin-right:8px;font:500 10.5px var(--mono);color:#ffb3ad;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.chst small{opacity:.8}.chbx2 a{color:#fff;cursor:pointer;font-size:12px;margin-right:8px}#chdock.min .chbx2{display:inline}
 #chdock.dnd .chbar{background:#5a1f1f}.chbar{position:relative;align-items:center}.avdnd{position:absolute;right:-1px;bottom:-1px;width:10px;height:10px;border-radius:50%;background:#e5383b;border:2px solid #fff}.avdnd::after{content:"";position:absolute;left:1px;right:1px;top:3px;height:2px;background:#fff}
 .mut{font-style:normal;font-size:10px;opacity:.7}.chdn{background:#fdecea;color:#8a1f17;font-size:11.5px;padding:6px 10px;border-top:1px solid #f5c6c0}.usdnd{font-style:normal;font-size:11px}
@@ -468,9 +469,10 @@ const chg=x=>{const h=x.hist;return h.length>1?(h.at(-1).p/h.at(-2).p-1)*100:nul
 const chgS=c=>c==null?"—":Math.abs(c)<0.005?`<span>0.00%</span>`:`<span class="${c>0?"up":"dn"}">${c>0?"+":""}${f(c)}%</span>`;
 let CRV={emi:["BCRD","SEH"],mon:"DOP",ses:String(NS),min:"0",fit:true,sel:null};try{const s=JSON.parse(localStorage.getItem("ambar_crv_sel")||"null");if(Array.isArray(s))CRV.sel=s}catch(e){}
 const saveSel=()=>{try{localStorage.setItem("ambar_crv_sel",JSON.stringify(CRV.sel))}catch(e){}};
+function ksIr(key){window.DETR=null;if(KSEL>=0&&KCMP>=0&&(KSEL!=LAST||KCMP!=LAST-1)){const a=D.fechas[KSEL],b=D.fechas[KCMP];window.DETR={d1:a<b?a:b,d2:a<b?b:a}}go("det-"+key)}
 function mercado(){if(KCMP==null)KCMP=LAST-1;if(KSEL==null)KSEL=LAST;const m=$("main"),T=BYD[LAST],P=BYD[LAST-1]||[];
  const card=key=>{const K=KPI[key],a=KSEL<0?null:val((BYD[KSEL]||[]).filter(FLT[K.flt]),K.k),b=KCMP<0?0:val((BYD[KCMP]||[]).filter(FLT[K.flt]),K.k),c=b?(a/b-1)*100:null;
-  return `<div class=ks onclick="go('det-${key}')" title="${K.t} · ${tr("Ver historial")}"><span>${{monto:"Monto total",rf:"Renta fija",rv:"Renta variable",ops:"Operaciones",tit:"Títulos negociados"}[key]}</span><div class=ksv><b>${a==null?"—":K.u=="RD$ MM"?"RD$ "+f(a,1)+" MM":a}</b><em class="${c>=0?"up":"dn"}">${c==null?"":(c>=0?"▲ ":"▼ ")+f(Math.abs(c),1)+"%"}</em></div></div>`};
+  return `<div class=ks onclick="ksIr('${key}')" title="${K.t} · ${tr("Ver historial")}"><span>${{monto:"Monto total",rf:"Renta fija",rv:"Renta variable",ops:"Operaciones",tit:"Títulos negociados"}[key]}</span><div class=ksv><b>${a==null?"—":K.u=="RD$ MM"?"RD$ "+f(a,1)+" MM":a}</b><em class="${c>=0?"up":"dn"}">${c==null?"":(c>=0?"▲ ":"▼ ")+f(Math.abs(c),1)+"%"}</em></div></div>`};
  const hoy=[...new Set(T.map(r=>r.x))].map(x=>({x,m:T.filter(r=>r.x==x).reduce((s,r)=>s+r.m,0)})).sort((a,b)=>b.m-a.m);
  const mov=RF.concat(RV).filter(x=>x.ui==LAST&&x.hist.length>1).map(x=>({x,c:chg(x)})).filter(o=>o.c!=null&&Math.abs(o.c)>=0.005).sort((a,b)=>Math.abs(b.c)-Math.abs(a.c));
  const PN={crv:`<div class="pn crv"><h2>Curva soberana · rendimiento vs. plazo<button class=xlb id=cxl>⤓ Excel</button></h2>
@@ -875,7 +877,7 @@ function detail(key){const K=KPI[key],m=$("main");
  <div class=ctl>Periodo ${seg("pe",PER,"63")} Agrupar ${seg("bk",Object.entries(BUCK).map(([k,v])=>[k,v[0]]),"d")} Vista ${seg("vw",[["bar","Barras"],["line","Línea"]],"bar")}</div>
  <div class=ctl>${gCtl("hg")} Desglose ${seg("gp",Object.entries(GROUPS).map(([k,v])=>[k,v[0]]),"total")} Cálculo ${seg("ac",[["d","Por periodo"],["c","Acumulado"],["p","% del total"]],"d")}</div>
  <div style="position:relative;height:min(320px,42vh)"><canvas id=hc></canvas></div><div id=ht style="margin-top:14px"></div><div class=src>${SRC} Unidad: ${K.u}.${key=="tit"?" En “Títulos negociados”, cada periodo cuenta títulos distintos, y el acumulado cuenta títulos distintos hasta esa fecha.":""}</div></div>`;
- const r=()=>{kill();const [st,EN]=gRng("hg",perStart(segVal("pe")),NS-1),bk=BUCK[segVal("bk")],vw=segVal("vw"),G=GROUPS[segVal("gp")][1],ac=segVal("ac");
+ const r=()=>{kill();$("pe").classList.toggle("off",!!($("hgd1").value||$("hgd2").value));const [st,EN]=gRng("hg",perStart(segVal("pe")),NS-1),bk=BUCK[segVal("bk")],vw=segVal("vw"),G=GROUPS[segVal("gp")][1],ac=segVal("ac");
   const keys=[],KI={};for(let i=st;i<=EN;i++){const b=bk[1](D.fechas[i]);if(!(b in KI)){KI[b]=keys.length;keys.push(b)}}
   const R=[];for(let i=st;i<=EN;i++)BYD[i].forEach(r=>{if(FLT[K.flt](r))R.push(r)});
   const cats=[...new Set(R.map(G))].sort();const S=cats.map(c=>keys.map(()=>[]));
@@ -890,14 +892,15 @@ function detail(key){const K=KPI[key],m=$("main");
   const dec=K.u=="RD$ MM"||ac=="p"?1:0,showT=cats.length>1&&ac!="p"&&K.k!="t";
   $("ht").innerHTML=tbl([bk[0]=="Diario"?"Fecha":"Periodo",...cats,...(showT?["Total"]:[]),...(ac=="d"&&cats.length==1?["Var. vs. periodo anterior"]:[])],
    keys.map((k,i)=>[bk[2](k),...V.map(s=>f(s[i],dec)+(ac=="p"?"%":"")),...(showT?[f(tot[i],dec)]:[]),...(ac=="d"&&cats.length==1?[i&&V[0][i-1]?`<span class="${V[0][i]>=V[0][i-1]?"up":"dn"}">${f((V[0][i]/V[0][i-1]-1)*100,1)}%</span>`:"—"]:[])]).reverse())};
- ["bk","vw","gp","ac"].forEach(id=>segBind(id,r));segBind("pe",()=>{["hgd1","hgd2"].forEach(i=>$(i).value="");fpCount();r()});["hgd1","hgd2","hgy1","hgy2","hgp1","hgp2"].forEach(i=>$(i).onchange=r);r()}
+ ["bk","vw","gp","ac"].forEach(id=>segBind(id,r));segBind("pe",()=>{["hgd1","hgd2"].forEach(i=>$(i).value="");fpCount();r()});["hgd1","hgd2","hgy1","hgy2","hgp1","hgp2"].forEach(i=>$(i).onchange=r);
+ if(window.DETR){$("hgd1").value=DETR.d1;$("hgd2").value=DETR.d2;window.DETR=null;setTimeout(fpCount,0)}r()}
 function titulo(isin){const x=BYI[isin],m=$("main");if(!x){m.innerHTML=backBtn+"<p>Título no encontrado.</p>";return}
  const an=x.cupon!=null&&x.rend&&x.vig?bondAn(x):null,H52=x.hist.filter(h=>h.i>=NS-252),hi=H52.length?Math.max(...H52.map(h=>h.p)):null,lo=H52.length?Math.min(...H52.map(h=>h.p)):null,avg=x.hist.length?x.monto_tot/x.hist.length:null,cat=D.cat.find(c=>c.isin==x.isin);
  m.innerHTML=`${backBtn}<div class=pn><h2>${x.titulo} · ${emi[x.emisor]||x.nombre||x.emisor}</h2>
  <div class=k><div>Último precio<b>${f(x.precio,4)}</b></div><div>Rendimiento<b>${pct(x.rend,3)}</b></div>${x.cupon!=null?`<div>Cupón<b>${pct(x.cupon,3)}</b></div>`:""}<div>Vencimiento<b>${x.venc||"—"}</b></div><div>Moneda<b>${x.moneda}</b></div>${an?`<div>Duración Macaulay<b>${f(an.mac,2)}</b></div><div>Duración modificada<b>${f(an.md,2)}</b></div><div>Convexidad<b>${f(an.cx,1)}</b></div><div>DV01 por RD$ 1 MM<b>RD$ ${f(an.md*1e6*1e-4,0)}</b></div>`:""}<div>Máx. 1 año<b>${f(hi,4)}</b></div><div>Mín. 1 año<b>${f(lo,4)}</b></div><div>Monto prom. por sesión<b>RD$ ${MM(avg)} MM</b>${x.moneda=="USD"?`<small class=sub>US$ ${MU(x.monto_usd/x.hist.length)} MM</small>`:""}</div>${cat&&cat.monto?`<div>Monto de la emisión<b>${f(cat.monto/1e6,0)} MM ${cat.moneda||""}</b></div>`:""}<div>Última operación<b>${fdy(x.ult)}</b></div><div>Sesiones con operaciones<b>${x.dias}/${NS}</b></div></div>
  <div class=ctl>Periodo ${seg("tp",PER,"all")} ${gCtl("tg")} Gráfica ${seg("tv",[["p","Precio"],...(x.rend?[["y","Rendimiento"]]:[]),["m","Monto"]],"p")}</div><div style="position:relative;height:min(320px,42vh)"><canvas id=tc></canvas></div>
  <div id=tt style="margin-top:14px"></div>${PRI.some(p=>p.isin==x.isin)?`<h2 style="margin-top:18px">Colocaciones en mercado primario</h2>${priTbl(PRI.filter(p=>p.isin==x.isin),false,x.mercado=="renta_variable")}`:""}<div class=src>${SRC} ISIN ${x.isin}.${an?" Duración y convexidad calculadas por Ámbar a partir del rendimiento, cupón, vencimiento y frecuencia de pago reportados (ver Portafolio → Supuestos).":""}</div></div>`;
- const r=()=>{kill();const [st,EN]=gRng("tg",perStart(segVal("tp")),NS-1),v=segVal("tv"),H=x.hist.filter(h=>h.i>=st&&h.i<=EN);
+ const r=()=>{kill();$("tp").classList.toggle("off",!!($("tgd1").value||$("tgd2").value));const [st,EN]=gRng("tg",perStart(segVal("tp")),NS-1),v=segVal("tv"),H=x.hist.filter(h=>h.i>=st&&h.i<=EN);
   charts.push(new Chart($("tc"),{type:v=="m"?"bar":"line",data:{labels:H.map(h=>fdy(h.f)),datasets:[{data:H.map(h=>v=="p"?h.p:v=="y"?h.y:h.m/1e6),borderColor:NAV,backgroundColor:v=="m"?AMB:NAV,pointRadius:H.length>60?0:3,borderWidth:1.8,tension:.15}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{maxTicksLimit:12}},y:{title:{display:true,text:v=="p"?(x.mercado=="renta_fija"?"Precio (% del nominal) · ":"Precio · ")+x.moneda:v=="y"?"Rend. % · "+x.moneda:"Monto · RD$ MM"}}}}}));
   gLim("tg",charts.at(-1),H.map(h=>v=="p"?h.p:v=="y"?h.y:h.m/1e6));
   const ses=EN-st+1;$("tt").innerHTML=tbl(["Fecha","Precio","Rend. %","Operaciones","Monto RD$ MM",...(x.moneda=="USD"?["Monto US$ MM","Tasa DOP/USD"]:[])],[...H].reverse().map(h=>[h.f+(isPre(h.f)?" (prel.)":""),f(h.p,4),f(h.y,3),h.n,MM(h.m),...(x.moneda=="USD"?[MU(h.mu),f(D.fx[h.i],4)]:[])]))+`<p class=src>Con operaciones en ${H.length} de ${ses} sesiones del periodo; los días sin operaciones no tienen precio.</p>`};
