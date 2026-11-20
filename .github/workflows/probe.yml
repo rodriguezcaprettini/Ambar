@@ -1,0 +1,12 @@
+name: probe
+on: push
+permissions: { contents: write }
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: pip install -q requests pandas openpyxl xlrd && python scripts/divisas.py --no-subir
+      - run: |
+          git config user.name bot; git config user.email bot@x
+          git checkout -b probe-out; git add -f data/out/fx.json; git commit -qm fx; git push -qf origin probe-out
