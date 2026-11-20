@@ -1084,7 +1084,7 @@ function tzElegir(forzar){let loc=RDTZ;try{loc=Intl.DateTimeFormat().resolvedOpt
 const tzNom=z=>{const o=tzOff(z),h=Math.floor(Math.abs(o)/60);return (z==RDTZ?tr("Hora de RD"):z.split("/").pop().replace(/_/g," "))+` (UTC${o<0?"−":"+"}${h})`};
 function tzBtn(){const i=$("info");if(!i)return;let b=$("tzb");if(!b){b=document.createElement("span");b.id="tzb";b.className="tzb notr";i.after(b);setInterval(tzBtn,1000)}
  const p=Object.fromEntries(new Intl.DateTimeFormat("en-CA",{timeZone:RDTZ,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"}).formatToParts(new Date()).map(o=>[o.type,o.value]));
- b.textContent=`Rep. Dom.: ${fd(p.year+"-"+p.month+"-"+p.day)} ${p.hour}:${p.minute}:${p.second}`;b.title=tr("Fecha y hora actual en República Dominicana")}
+ b.textContent=`${LANG=="en"?"Dom. Rep.":"Rep. Dom."}: ${fd(p.year+"-"+p.month+"-"+p.day)} ${p.hour}:${p.minute}:${p.second}`;b.title=tr("Fecha y hora actual en República Dominicana")}
 document.addEventListener("click",e=>{if(e.target.id=="cfgtz"){tzElegir(true)}});
 async function perfilInit(){tzBtn();setTimeout(()=>tzElegir(false),1500);const{data:{session}}=await sb.auth.getSession();if(!session)return;ME.id=session.user.id;ME.email=session.user.email;
  const{data}=await sb.from("perfiles").select("*").eq("id",ME.id).maybeSingle();
