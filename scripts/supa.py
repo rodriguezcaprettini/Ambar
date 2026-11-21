@@ -26,7 +26,14 @@ def headers(extra=None, bearer=None):
 def pedir(metodo, ruta, **kw):
     """Hace la petición; si la clave nueva (sb_secret_) es rechazada sin 'Authorization', reintenta con ella."""
     extra = kw.pop("extra", None)
-    r = requests.request(metodo, f"{URL}/storage/v1/{ruta}", headers=headers(extra), timeout=120, **kw)
+    import time
+    for intento in range(4):  # reintenta si Supabase/Cloudflare responde con un error temporal (5xx) o se corta la conexión
+        try:
+            r = requests.request(metodo, f"{URL}/storage/v1/{ruta}", headers=headers(extra), timeout=120, **kw)
+            if r.status_code < 500: break
+        except requests.RequestException:
+            if intento == 3: raise
+        time.sleep(5 * (intento + 1))
     if r.status_code in (400, 401, 403) and KEY.startswith("sb_"):
         r = requests.request(metodo, f"{URL}/storage/v1/{ruta}", headers=headers(extra, bearer=True), timeout=120, **kw)
     return r
