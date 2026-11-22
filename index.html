@@ -498,9 +498,12 @@ document.addEventListener("keydown",e=>{const t=e.target;if(!t||t.id!="kdate1")r
 document.addEventListener("keydown",e=>{const t=e.target;if(!t||t.id!="tdate")return;
  if(e.key=="Enter"){e.preventDefault();const p=tParse(t.value);const d=p?`${p[0]}-${String(p[1]).padStart(2,"0")}-${String(p[2]).padStart(2,"0")}`:"";tapeAt(d);if(p)t.value=fd(d);t.blur()}
  if(e.key=="Escape"){t.blur();tapeAt(D.fecha)}});
-// cinta: con el mouse encima, la rueda la adelanta (o la regresa) más rápido
+// cinta: con el mouse encima, la rueda la adelanta (o la regresa) de forma suave
+let TKW={obj:0,raf:0};
 document.addEventListener("wheel",e=>{const t=e.target.closest&&e.target.closest(".tape");if(!t||e.target.closest(".tdate,.tcal"))return;const k=t.querySelector(".tkr");const an=k&&k.getAnimations&&k.getAnimations()[0];if(!an)return;e.preventDefault();
- const dur=an.effect.getComputedTiming().duration||90000,d=(Math.abs(e.deltaY)>=Math.abs(e.deltaX)?e.deltaY:e.deltaX);an.currentTime=((an.currentTime||0)+d*dur/4000+dur)%dur;document.querySelectorAll(".tcard").forEach(c=>c.style.display="none")},{passive:false});
+ const dur=an.effect.getComputedTiming().duration||90000,ancho=k.scrollWidth/2||3000,msPx=dur/ancho,d=(Math.abs(e.deltaY)>=Math.abs(e.deltaX)?e.deltaY:e.deltaX),px=Math.max(-90,Math.min(90,d*0.6));
+ TKW.obj+=px*msPx;document.querySelectorAll(".tcard").forEach(c=>c.style.display="none");
+ if(!TKW.raf){const paso=()=>{const mov=TKW.obj*0.16;if(Math.abs(TKW.obj)<0.5){TKW.obj=0;TKW.raf=0;return}TKW.obj-=mov;an.currentTime=((an.currentTime||0)+mov+dur)%dur;TKW.raf=requestAnimationFrame(paso)};TKW.raf=requestAnimationFrame(paso)}},{passive:false});
 // cinta: al pasar el mouse por un título, la misma ficha de la curva soberana
 (()=>{let TC=null,hid=null;const hide=()=>{if(TC)TC.style.display="none"};
  document.addEventListener("mouseover",e=>{const a=e.target.closest&&e.target.closest(".tape .tk");if(!a){if(TC&&!e.target.closest(".tcard"))hide();return}
