@@ -207,6 +207,26 @@ def main():
             v = [num(x, 3) for x in r[2:14]]
             if any(x is not None for x in v): filas.append([f"{ano:04d}-{mm:02d}"] + v)
     fx["volumen"] = {"cols": ["ef_net_c", "ef_net_v", "ef_br_c", "ef_br_v", "ag_net_c", "ag_net_v", "ag_br_c", "ag_br_v", "tot_net_c", "tot_net_v", "tot_br_c", "tot_br_v"], "rows": filas}
+    # no perder días ya publicados: se combinan con la versión anterior (lo nuevo manda)
+    try:
+        import gzip
+        sys.path.insert(0, os.path.dirname(__file__))
+        import supa
+        if supa.URL and supa.bajar_archivo("fx.json.gz", "data/fx_prev.json.gz"):
+            prev = json.loads(gzip.decompress(open("data/fx_prev.json.gz", "rb").read()))
+            def unir(nuevo, viejo):
+                d = {r[0]: r for r in viejo}
+                d.update({r[0]: r for r in nuevo})
+                return [d[k] for k in sorted(d)]
+            for k in ("ref", "ef", "ag", "der"):
+                if k != "der": fx[k] = unir(fx[k], prev.get(k, []))
+            for k, v in prev.get("sondeo", {}).items():
+                fx["sondeo"][k] = unir(fx["sondeo"].get(k, []), v)
+            if prev.get("otras", {}).get("monedas") == fx["otras"]["monedas"]:
+                fx["otras"]["rows"] = unir(fx["otras"]["rows"], prev["otras"]["rows"])
+            print("combinado con la versión anterior")
+    except Exception as e:
+        print("sin versión anterior:", e)
     for paso in (hoy_referencia, hoy_otras, hoy_sondeo, hoy_promedio):
         try: paso(fx)
         except Exception as e: print(paso.__name__, "error:", e)
