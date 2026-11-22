@@ -5,6 +5,7 @@ on:
   schedule:
     - cron: "11 20-23 * * 1-5"   # 4:11 PM – 7:11 PM RD
     - cron: "11 0-4 * * 2-6"     # 8:11 PM – 12:11 AM RD (ya es el día siguiente en UTC)
+    - cron: "41 12-23/2 * * 6"   # sábados 8:41 AM – 6:41 PM RD cada 2 horas: recoge lo del viernes que el Banco Central publica tarde
   workflow_dispatch: {}
 permissions:
   contents: read
