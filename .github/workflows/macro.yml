@@ -1,0 +1,25 @@
+# Robot MACRO: precios e inflación del Banco Central (IPC). El BCRD publica el IPC a inicios de cada mes;
+# se revisa dos veces al día (11:23 AM y 7:23 PM hora RD) y solo se sube si cambió algo.
+name: Macro (Banco Central)
+on:
+  schedule:
+    - cron: "23 15 * * *"
+    - cron: "23 23 * * *"
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency: macro
+jobs:
+  macro:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.12" }
+      - run: pip install requests pandas openpyxl xlrd
+      - name: Descargar y preparar datos macro
+        run: python scripts/macro.py
