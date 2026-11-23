@@ -1,11 +1,9 @@
 # Robot MACRO: precios e inflación (IPC) y publicaciones del Banco Central.
-# Días 1–10 de cada mes (cuando sale el IPC): cada hora de 8:23 AM a 7:23 PM hora RD.
-# Resto del mes: dos veces al día (11:23 AM y 7:23 PM hora RD). Solo se sube si cambió algo.
+# Cada hora, todos los días (minuto 23). Solo se sube si cambió algo.
 name: Macro (Banco Central)
 on:
   schedule:
-    - cron: "23 12-23 1-10 * *"
-    - cron: "23 15,23 11-31 * *"
+    - cron: "23 * * * *"
   workflow_dispatch: {}
 permissions:
   contents: read
