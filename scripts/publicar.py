@@ -20,6 +20,9 @@ def ult(rows, col=None):
 
 
 def poner(fuente, conjunto, titulo, periodo, ruta):
+    import datetime
+    if periodo and str(periodo)[:7] < (datetime.date.today() - datetime.timedelta(days=400)).isoformat()[:7]:
+        return  # serie que el Banco Central ya no actualiza (p. ej. derivados): no se anuncia
     if periodo: EV.append({"fuente": fuente, "conjunto": conjunto, "titulo": titulo, "periodo": str(periodo), "ruta": ruta})
 
 
