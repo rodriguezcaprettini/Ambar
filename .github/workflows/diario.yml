@@ -40,3 +40,6 @@ jobs:
         run: python scripts/build_data.py
       - name: Subir a Supabase (almacenamiento privado)
         run: python scripts/supa.py subir
+      - name: Registrar publicaciones nuevas
+        continue-on-error: true
+        run: python scripts/publicar.py

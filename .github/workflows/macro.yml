@@ -23,3 +23,6 @@ jobs:
       - run: pip install requests pandas openpyxl xlrd
       - name: Descargar y preparar datos macro
         run: python scripts/macro.py
+      - name: Registrar publicaciones nuevas
+        continue-on-error: true
+        run: python scripts/publicar.py

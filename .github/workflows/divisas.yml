@@ -24,3 +24,6 @@ jobs:
       - run: pip install requests pandas openpyxl xlrd pdfplumber
       - name: Descargar y preparar divisas
         run: python scripts/divisas.py
+      - name: Registrar publicaciones nuevas
+        continue-on-error: true
+        run: python scripts/publicar.py
