@@ -1,9 +1,9 @@
 # Robot MACRO: precios e inflación (IPC) y publicaciones del Banco Central.
-# Cada hora, todos los días (minuto 23). Solo se sube si cambió algo.
+# Cada 15 minutos, todos los días. Solo se sube si cambió algo.
 name: Macro (Banco Central)
 on:
   schedule:
-    - cron: "23 * * * *"
+    - cron: "14,29,44,59 * * * *"
   workflow_dispatch: {}
 permissions:
   contents: read

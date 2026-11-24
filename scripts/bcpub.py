@@ -103,6 +103,9 @@ def main():
     if "--no-subir" in sys.argv: return
     sys.path.insert(0, os.path.dirname(__file__))
     import supa
+    ant = None
+    if supa.bajar_archivo("estado/bcpub_hash.txt", "data/bcpub_hash.txt"): ant = open("data/bcpub_hash.txt").read().strip()
+    if ant == h: print("Sin cambios."); return
     nom = {c["id"]: c["nombre"] for c in cats}
     ev = [{"fuente": "Banco Central", "conjunto": f"bcpub_{i['cat']}", "titulo": i["t"], "periodo": str(i["id"]), "ruta": "macro:pub",
            "url": i["u"], "categoria": nom[i["cat"]], "cat": i["cat"], "py": i["py"], "pm": i["pm"], "detectado": (i["sub"] + "Z") if i["sub"] else ((i["f"] + "T12:00:00Z") if i["f"] else "2018-01-18T12:00:00Z")} for i in items]
@@ -113,9 +116,6 @@ def main():
         if r.status_code >= 300: print("Error registrando:", r.status_code, r.text[:300]); break
         nuevos += len(r.json() or [])
     print("publicaciones registradas o actualizadas:", nuevos)
-    ant = None
-    if supa.bajar_archivo("estado/bcpub_hash.txt", "data/bcpub_hash.txt"): ant = open("data/bcpub_hash.txt").read().strip()
-    if ant == h: print("Sin cambios."); return
     supa.subir_archivo(OUT + ".gz", "bcpub.json.gz")
     open("data/bcpub_hash.txt", "w").write(h)
     supa.subir_archivo("data/bcpub_hash.txt", "estado/bcpub_hash.txt")

@@ -1,11 +1,11 @@
 # Robot de divisas: datos del Banco Central (mercado cambiario).
-# Lunes a viernes, cada hora de 4:00 PM a 12:00 AM hora RD (UTC-4) = 20:00 a 04:00 UTC.
+# Lunes a viernes, cada 15 min de 8:00 AM a 12:00 AM hora RD (UTC-4); sábados de 8:00 AM a 7:00 PM.
 name: Divisas (Banco Central)
 on:
   schedule:
-    - cron: "11 20-23 * * 1-5"   # 4:11 PM – 7:11 PM RD
-    - cron: "11 0-4 * * 2-6"     # 8:11 PM – 12:11 AM RD (ya es el día siguiente en UTC)
-    - cron: "41 12-23/2 * * 6"   # sábados 8:41 AM – 6:41 PM RD cada 2 horas: recoge lo del viernes que el Banco Central publica tarde
+    - cron: "11,26,41,56 12-23 * * 1-5"   # 8:11 AM – 7:56 PM RD
+    - cron: "11,26,41,56 0-3 * * 2-6"     # 8:11 PM – 11:56 PM RD (ya es el día siguiente en UTC)
+    - cron: "11,26,41,56 12-22 * * 6"     # sábados 8:11 AM – 6:56 PM RD: recoge lo del viernes que el Banco Central publica tarde
   workflow_dispatch: {}
 permissions:
   contents: read
