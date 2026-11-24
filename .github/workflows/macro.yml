@@ -3,7 +3,7 @@
 name: Macro (Banco Central)
 on:
   schedule:
-    - cron: "14,29,44,59 * * * *"
+    - cron: "52 */3 * * *"   # respaldo: el horario principal (cada 15 min) lo lanza Supabase (pg_cron)
   workflow_dispatch: {}
 permissions:
   contents: read

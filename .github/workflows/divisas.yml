@@ -2,10 +2,9 @@
 # Lunes a viernes, cada 15 min de 8:00 AM a 12:00 AM hora RD (UTC-4); sábados de 8:00 AM a 7:00 PM.
 name: Divisas (Banco Central)
 on:
-  schedule:
-    - cron: "11,26,41,56 12-23 * * 1-5"   # 8:11 AM – 7:56 PM RD
-    - cron: "11,26,41,56 0-3 * * 2-6"     # 8:11 PM – 11:56 PM RD (ya es el día siguiente en UTC)
-    - cron: "11,26,41,56 12-22 * * 6"     # sábados 8:11 AM – 6:56 PM RD: recoge lo del viernes que el Banco Central publica tarde
+  schedule:   # respaldo: el horario principal (cada 15 min) lo lanza Supabase (pg_cron) a la hora exacta
+    - cron: "33 13-23/2 * * 1-5"
+    - cron: "33 1,3 * * 2-6"
   workflow_dispatch: {}
 permissions:
   contents: read

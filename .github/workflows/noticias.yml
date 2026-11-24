@@ -3,7 +3,7 @@
 name: Noticias cada 15 minutos
 on:
   schedule:
-    - cron: "7,22,37,52 * * * *"   # cada 15 minutos (evita el minuto 0, que GitHub suele retrasar)
+    - cron: "44 */2 * * *"   # respaldo: el horario principal (cada 15 min) lo lanza Supabase (pg_cron) a la hora exacta
   workflow_dispatch: {}
 permissions:
   contents: read

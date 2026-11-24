@@ -1,11 +1,10 @@
 # Robot diario de Ámbar: descarga el boletín de la BVRD y las noticias, y actualiza la terminal.
 name: Actualización diaria
 on:
-  schedule:
-    - cron: "15 12 * * 1-5"   # 8:15 am hora RD (las noticias ahora tienen su propio robot cada 30 min)
-    - cron: "3,18,33,48 17-23 * * 1-5" # cada 15 min de 1:00 pm a 7:45 pm hora RD: busca el boletín del día (se marca PRELIMINAR)
-    - cron: "3,18,33,48 0 * * 2-6"     # cada 15 min de 8:00 pm a 8:45 pm hora RD
-    - cron: "5 1 * * 2-6"     # 9:05 pm hora RD: descarga definitiva del boletín del día
+  schedule:   # respaldo: el horario principal (8:15 AM, cada 15 min de 1 a 8:45 PM y 9:05 PM RD) lo lanza Supabase (pg_cron)
+    - cron: "40 12 * * 1-5"
+    - cron: "40 18,20,22 * * 1-5"
+    - cron: "25 1 * * 2-6"
   workflow_dispatch: {}       # botón "Run workflow" para correrlo a mano
 permissions:
   contents: read            # el robot ya no escribe en el repositorio: los datos viven en Supabase
