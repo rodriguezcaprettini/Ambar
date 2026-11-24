@@ -1,0 +1,14 @@
+[
+ {"version": "1", "nombre": "v2026.11.19", "commit": "cc50d5c", "rama": "respaldo-2026-11-19", "fecha": "2026-11-19",
+  "resumen": "Base de la terminal: acceso con cuenta y código de invitación, datos privados en Supabase, MKT como tablero personalizable (curva soberana, noticias, puestos, más negociados, variaciones), RF, FND, EMI, OPS, PDB, NEWS con archivo histórico y 15+ medios, cinta con fecha y ficha flotante, métricas, filtros desplegables y herramientas de gráfica. Robots: boletín BVRD, calendario y noticias."},
+ {"version": "2", "nombre": "v2026.11.19b", "commit": "ac8914b", "rama": "respaldo-2026-11-19-b", "fecha": "2026-11-19",
+  "resumen": "Ajustes de filtros (mín./máx. visibles, caben en pantalla), OPS con un solo filtro, PDB total por defecto y rango por mes con cajitas MMM-AAAA."},
+ {"version": "3", "nombre": "v2026.11.20", "commit": "169a97f", "rama": "respaldo-2026-11-20", "fecha": "2026-11-20",
+  "resumen": "Usuarios y chat en tiempo real (perfil, foto, privacidad, DMs y grupos, bloqueo, reportes, silenciar, no molestar), zona horaria y eliminar cuenta, gráficas guardables y exportables (GRAF), gráfica de OPS estilo Bloomberg, respaldo semanal de Supabase, pestaña FX con datos del BCRD y su robot, DOP/USD en toda la terminal."},
+ {"version": "4", "nombre": "v2026.11.22", "commit": "7495fa9", "rama": "respaldo-2026-11-22-a", "fecha": "2026-11-22",
+  "resumen": "Nuevo logo (Sol de ámbar), herramientas de gráfica (quitar puntos, eje fijo, zoom con rueda, colores en Herramientas), MKT sin scroll con divisores, GRAF con carpetas y selección múltiple, sección MACRO (inflación IPC y publicaciones del BCRD), Publicaciones recientes con NUEVO por usuario, tipografía IBM Plex, pantalla de carga y tablas de MKT estandarizadas."},
+ {"version": "5", "nombre": "v2026.11.22b", "commit": "eae3466", "rama": "respaldo-2026-11-22", "fecha": "2026-11-22",
+  "resumen": "Cinta con USD/DOP y EUR/DOP VENTA (ASK en inglés), pestañas dentro de la terminal (Ctrl+clic) y apertura en pestaña o ventana del navegador (clic derecho / clic del medio)."},
+ {"version": "6", "nombre": "v2026.11.24", "commit": "179e17a", "rama": "respaldo-2026-11-24", "fecha": "2026-11-24",
+  "resumen": "Terminal en vivo (aviso instantáneo de datos nuevos del BCRD, la BVRD y noticias), robots cada 15 minutos lanzados a la hora exacta desde Supabase (pg_cron) con GitHub como respaldo."}
+]
