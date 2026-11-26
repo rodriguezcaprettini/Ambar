@@ -3,7 +3,7 @@ Robot de divisas de Ámbar: descarga los archivos públicos del Banco Central (M
 https://www.bancentral.gov.do/a/d/2538-mercado-cambiario) y arma data/out/fx.json para la pestaña FX.
 Se sube a Supabase solo si cambió algo. Uso: python scripts/divisas.py [--no-subir]
 """
-import hashlib, io, json, math, os, sys, unicodedata
+import hashlib, io, json, math, os, sys, unicodedata, time
 import pandas as pd, requests
 
 B = "https://cdn.bancentral.gov.do/documents/estadisticas/mercado-cambiario/documents/"
@@ -17,7 +17,7 @@ def sin(s):
 
 
 def bajar(f):
-    r = requests.get(B + f, headers=UA, timeout=90)
+    r = requests.get(B + f, params={"v": time.time_ns()}, headers={**UA, "Cache-Control": "no-cache", "Pragma": "no-cache"}, timeout=90)  # evita la copia vieja del caché del CDN del BCRD
     r.raise_for_status()
     return pd.read_excel(io.BytesIO(r.content), sheet_name=None, header=None)
 
@@ -60,7 +60,7 @@ MESL = {"enero": 1, "febrero": 2, "marzo": 3, "abril": 4, "mayo": 5, "junio": 6,
 
 def pdf_texto(f):
     import pdfplumber
-    r = requests.get(B + f, headers=UA, timeout=90)
+    r = requests.get(B + f, params={"v": time.time_ns()}, headers={**UA, "Cache-Control": "no-cache", "Pragma": "no-cache"}, timeout=90)  # evita la copia vieja del caché del CDN del BCRD
     r.raise_for_status()
     return pdfplumber.open(io.BytesIO(r.content))
 

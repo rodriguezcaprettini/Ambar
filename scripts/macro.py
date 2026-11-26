@@ -4,7 +4,7 @@ Robot MACRO de Ámbar: descarga los archivos públicos de precios del Banco Cent
 Guarda solo los índices mensuales; las variaciones (mensual, acumulada, interanual) se calculan en la terminal.
 Uso: python scripts/macro.py [--no-subir] [--local DIR]
 """
-import gzip, hashlib, io, json, os, sys, unicodedata
+import gzip, hashlib, io, json, os, sys, unicodedata, time
 import pandas as pd, requests
 
 B = "https://cdn.bancentral.gov.do/documents/estadisticas/precios/documents/"
@@ -21,7 +21,7 @@ def sin(s):
 def bajar(f):
     if LOCAL:
         return pd.read_excel(os.path.join(LOCAL, f), sheet_name=None, header=None)
-    r = requests.get(B + f, headers=UA, timeout=120)
+    r = requests.get(B + f, params={"v": time.time_ns()}, headers={**UA, "Cache-Control": "no-cache", "Pragma": "no-cache"}, timeout=120)  # evita la copia vieja del caché del CDN del BCRD
     r.raise_for_status()
     return pd.read_excel(io.BytesIO(r.content), sheet_name=None, header=None)
 
