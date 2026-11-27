@@ -8,5 +8,4 @@ jobs:
     steps:
       - name: Una peticion, identificacion honesta
         run: |
-          curl -s -o /tmp/out.bin -w "status=%{http_code} type=%{content_type} bytes=%{size_download}\n" -A "AmbarBot/1.0 (+https://github.com/rodriguezcaprettini/Ambar)" "https://prod-data.bvrd.com.do/json/boletines.json"
-          head -c 200 /tmp/out.bin | tr -d '\0'; echo
+          curl -s -o /tmp/out.bin -w "status=%{http_code} type=%{content_type} bytes=%{size_download}\n" -A "AmbarBot/1.0 (+https://github.com/rodriguezcaprettini/Ambar)" "https://prod-data.bvrd.com.do/documentos/boletines/BOLETINES+Y+PRECIOS+2026/Boletin+Consolidado/11.+Noviembre/27-11-2026-Boletin+BVRD+Consolidado+excel.xlsx"
