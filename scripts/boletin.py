@@ -121,7 +121,7 @@ def solo_primario(desde, hasta):
     while d <= hasta:
         if d.weekday() < 5:
             for u in urls(d):
-                r = requests.get(u, timeout=60, headers={"User-Agent": "AmbarBot/1.0 (+https://github.com/rodriguezcaprettini/Ambar)"})
+                r = requests.get(u, timeout=60, headers={"User-Agent": "Mozilla/5.0 (Ambar)"})
                 if r.status_code == 200 and r.content[:2] == b"PK":
                     try:
                         b = io.BytesIO(r.content)
@@ -220,7 +220,7 @@ def un_dia(fecha, archivo=None):
     else:
         r = None
         for u in urls(fecha):
-            r = requests.get(u, timeout=60, headers={"User-Agent": "AmbarBot/1.0 (+https://github.com/rodriguezcaprettini/Ambar)"})
+            r = requests.get(u, timeout=60, headers={"User-Agent": "Mozilla/5.0 (Ambar)"})
             if r.status_code == 200 and r.content[:2] == b"PK":
                 break
         else:

@@ -95,8 +95,7 @@ def main():
         n = sum(bajar_archivo(f"estado/{f}", f"data/{f}") for f in ESTADO)
         print(f"Estado bajado de Supabase: {n} de {len(ESTADO)} archivos" + (" (primera vez: se usan los del repositorio)" if n == 0 else ""))
     elif accion == "subir":
-        # ruta remota siempre con "/" (en Windows glob devuelve "\")
-        archivos = [(f, os.path.relpath(f, "data/out").replace(os.sep, "/")) for f in glob.glob("data/out/**/*.json", recursive=True)]
+        archivos = [(f, f[len("data/out/"):]) for f in glob.glob("data/out/**/*.json", recursive=True)]
         archivos += [(f"data/{f}", f"estado/{f}") for f in ESTADO if os.path.exists(f"data/{f}")]
         for local, remoto in archivos:
             subir_archivo(local, remoto)
