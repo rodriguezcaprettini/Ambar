@@ -27,13 +27,7 @@ jobs:
         run: python scripts/boletin.py
       - name: ¿Ya aparece en la página web de la BVRD?
         continue-on-error: true   # si la página falla, el resto del robot sigue
-        run: |
-          python scripts/calendario.py || {
-            [ $? -eq 3 ] || exit 1
-            echo "La lista JSON falló: se usa el navegador de respaldo"
-            pip install playwright > /dev/null && python -m playwright install --with-deps chromium > /dev/null
-            python scripts/calendario.py --navegador
-          }
+        run: python scripts/calendario.py
       - name: Noticias
         run: python scripts/noticias.py
       - name: Preparar datos de la terminal

@@ -2,12 +2,12 @@
 Revisa si cada boletín ya aparece en la página pública de la BVRD (https://boletines.bvrd.com.do/) y anota
 la PRIMERA hora (RD) en que aparece. El calendario de esa página se arma con la lista
 https://prod-data.bvrd.com.do/json/boletines.json, así que se lee esa lista directamente (rápido).
-Si la lista falla, se usa como respaldo un navegador automático (python scripts/calendario.py --navegador).
+Si la lista falla, el robot lo registra y no lo reintenta con otro método (no se usan navegadores automáticos).
 
 Guarda:
   data/publicacion.json  -> {fecha: {"en_servidor": hora, "en_pagina": hora}}
   data/calendario_red.txt -> direcciones que consulta el calendario (para diagnóstico)
-Solo escribe los archivos si hay algo nuevo. Requisitos: pip install requests (y playwright solo para el respaldo con --navegador)
+Solo escribe los archivos si hay algo nuevo. Requisitos: pip install requests
 Se ejecuta desde la raíz del repositorio.
 """
 import datetime as dt, json, os, re, sys
@@ -41,41 +41,16 @@ def main():
         print("Nada pendiente."); return
 
     textos, red, fallas, estado, html, texto_visible = [], set(), [], None, "", ""
-    usar_nav = "--navegador" in sys.argv
-    if not usar_nav:
-        try:
-            r = requests.get(LISTA, timeout=60, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131.0 Safari/537.36",
-                                                         "Referer": "https://boletines.bvrd.com.do/"})
-            r.raise_for_status(); r.json()
-            textos.append(r.text); red.add(LISTA); html = r.text; texto_visible = "(lista JSON)"
-            class E: status = r.status_code
-            estado = E()
-        except Exception as e:
-            print(f"No se pudo leer la lista JSON ({e}); hace falta el navegador.", file=sys.stderr)
-            sys.exit(3)  # el robot instala el navegador y vuelve a correr con --navegador
-    else:
-        from playwright.sync_api import sync_playwright
-        with sync_playwright() as p:
-            b = p.chromium.launch(args=["--disable-blink-features=AutomationControlled"])
-            ctx = b.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-                locale="es-DO", timezone_id="America/Santo_Domingo", viewport={"width": 1366, "height": 900})
-            ctx.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-            pg = ctx.new_page()
-            pg.on("requestfailed", lambda r: fallas.append(f"FALLÓ {r.url} {r.failure}"))
-            def resp(r):
-                u = r.url
-                if any(u.endswith(x) for x in (".png", ".jpg", ".svg", ".woff", ".woff2", ".css", ".ico")): return
-                red.add(u.split("?")[0])
-                try:
-                    if "json" in (r.headers.get("content-type") or "") or u.endswith(".json"): textos.append(r.text())
-                except Exception: pass
-            pg.on("response", resp)
-            estado = pg.goto(URL, wait_until="networkidle", timeout=90_000)
-            pg.wait_for_timeout(6000)
-            html = pg.content(); textos.append(html)
-            texto_visible = pg.inner_text("body") if pg.query_selector("body") else ""
-            b.close()
+    try:
+        r = requests.get(LISTA, timeout=60, headers={"User-Agent": "AmbarBot/1.0 (+https://github.com/rodriguezcaprettini/Ambar)",
+                                                     "Referer": "https://boletines.bvrd.com.do/"})
+        r.raise_for_status(); r.json()
+        textos.append(r.text); red.add(LISTA); html = r.text; texto_visible = "(lista JSON)"
+        class E: status = r.status_code
+        estado = E()
+    except Exception as e:
+        print(f"No se pudo leer la lista JSON ({e}).", file=sys.stderr)
+        sys.exit(3)
     todo = "\n".join(textos)
     todo_dec = todo.replace("+", " ").replace("%20", " ")
 
