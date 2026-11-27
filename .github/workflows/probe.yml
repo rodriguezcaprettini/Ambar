@@ -1,0 +1,18 @@
+name: probe
+on:
+  push:
+    branches: [probe]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Una peticion por URL, identificacion honesta
+        run: |
+          for u in \
+            "https://boletin.bvrd.com.do/BOLETINES+Y+PRECIOS+2026/Boletin+Consolidado/11.+Noviembre/25-11-2026-Boletin+BVRD+Consolidado+excel.xlsx" \
+            "https://boletin.bvrd.com.do/BOLETINES+Y+PRECIOS+2026/Boletin+Consolidado/11.+Noviembre/27-11-2026-Boletin+BVRD+Consolidado+excel.xlsx" \
+            "https://boletin.bvrd.com.do/BOLETINES+Y+PRECIOS+2026/BMM/3.+Marzo/BDMM+BO2+16-03-26.pdf"; do
+            echo "== $u"
+            curl -s -o /tmp/out.bin -w "status=%{http_code} type=%{content_type} bytes=%{size_download}\n" -A "AmbarBot/1.0 (+https://github.com/rodriguezcaprettini/Ambar)" "$u"
+            head -c 120 /tmp/out.bin | tr -d '\0' | head -2; echo
+          done
