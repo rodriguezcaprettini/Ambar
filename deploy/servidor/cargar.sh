@@ -19,8 +19,9 @@ for f in "$@"; do
     echo "No encuentro la fecha DD-MM-YYYY en el nombre: $n"; exit 1
   fi
   [ "$(head -c2 "$f")" = "PK" ] || { echo "$n no es un Excel válido (¿se descargó una página en vez del archivo?)"; exit 1; }
-  LISTA+=("$d|$f")
+  LISTA+=("$d|$(stat -c %Y "$f")|$f")   # fecha del boletín y hora de modificación del archivo
 done
+# por fecha y, dentro del mismo día, del archivo más viejo al más nuevo: la última descarga es la que queda
 IFS=$'\n' LISTA=($(printf '%s\n' "${LISTA[@]}" | sort)); unset IFS
 
 RAIZ=/opt/ambar; PY="$RAIZ/venv/bin/python"
@@ -31,7 +32,7 @@ git pull --ff-only -q || echo "(aviso) no se pudo actualizar el código; se usa 
 
 "$PY" scripts/supa.py bajar-estado
 for x in "${LISTA[@]}"; do
-  d="${x%%|*}"; f="${x#*|}"
+  d="${x%%|*}"; f="${x#*|}"; f="${f#*|}"
   echo "== $d  ($(basename "$f"))"
   "$PY" scripts/boletin.py --archivo "$f" "$d"
 done
