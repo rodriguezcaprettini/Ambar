@@ -192,3 +192,32 @@ for route in API_ROUTES:
         resp.close()
     except Exception as exc:
         print("API_ERROR", route, type(exc).__name__, str(exc)[:200])
+
+
+print("=== PRUEBAS API CON PARAMETROS REALES DEL DASHBOARD ===")
+PARAM_TESTS = [
+    ("/precios_diarios_db", {"titulo_id": "AOCISA", "desde": "2026-11-01"}),
+    ("/operaciones_totales", {"titulo_id": "AOCISA", "desde": "2026-11-01"}),
+    ("/precio_ops_dia", {"titulo_id": "AOCISA"}),
+    ("/variaciones_precio", {"titulo_id": "AOCISA"}),
+    ("/ranking_bvrd_db", {"titulo_id": "AOCISA", "top_pb": 3}),
+    ("/monitoreo_navs_db", {"titulo_id": "VF1RIC01", "desde": "2026-11-01"}),
+    ("/variaciones_navs_db", {"titulo_id": "VF1RIC01"}),
+]
+for route, params in PARAM_TESTS:
+    try:
+        resp = S.get(API_BASE + route, params=params, timeout=TIMEOUT,
+                     headers={"Accept": "application/json"})
+        ctype = resp.headers.get("content-type", "")
+        print(f"API_PARAM_PROBE {route} params={params} status={resp.status_code} type={ctype} bytes={len(resp.content)} url={resp.url}")
+        if resp.status_code == 200 and "json" in ctype.lower():
+            try:
+                data = resp.json()
+                print("API_PARAM_DATA", route, brief_json(data, 3500))
+            except Exception as exc:
+                print("API_PARAM_JSON_ERROR", route, type(exc).__name__, str(exc)[:160])
+        else:
+            print("API_PARAM_BODY", route, resp.text[:350].replace("\\n", " "))
+        resp.close()
+    except Exception as exc:
+        print("API_PARAM_ERROR", route, type(exc).__name__, str(exc)[:180])
