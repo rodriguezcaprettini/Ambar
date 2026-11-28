@@ -96,7 +96,7 @@ for u in APP_PAGES + SIMV_PAGES:
         r = S.get(u, timeout=TIMEOUT)
         if r.status_code == 200:
             html = r.text[:3_000_000]
-            scripts = re.findall(r'<script[^>]+src=["\\']([^"\\']+)', html, re.I)
+            scripts = re.findall(r'''<script[^>]+src=["']([^"']+)''', html, re.I)
             for src in scripts[:30]:
                 asset = urljoin(r.url, src)
                 print("  SCRIPT", asset)
