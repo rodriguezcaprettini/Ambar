@@ -19,5 +19,5 @@ jobs:
           python-version: "3.12"
       - name: Instalar dependencia
         run: python -m pip install requests
-      - name: Consultar fuentes públicas y enlaces Excel
+      - name: Probar CDN y rutas publicas de boletines
         run: python scripts/diagnostico_bvrd_fuentes.py
