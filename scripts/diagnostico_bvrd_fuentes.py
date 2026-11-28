@@ -1,64 +1,51 @@
 #!/usr/bin/env python3
-"""Diagnóstico de fuentes públicas alternativas para los Excel diarios de la BVRD.
+"""Prueba de acceso a rutas públicas BVRD/CDN desde GitHub Actions.
 
-No intenta resolver ni evadir desafíos de Cloudflare. Comprueba si la propia web
-pública o sus enlaces publicados ofrecen una URL de Excel descargable desde CI.
+No resuelve desafíos anti-bot ni usa proxies. Comprueba archivos conocidos y
+rutas de boletines recientes, validando la firma real del contenido.
 """
-import re
-import sys
-from urllib.parse import urljoin, urlparse
-
+from datetime import date
+from urllib.parse import urlparse
 import requests
 
 S = requests.Session()
-S.headers.update({"User-Agent": "AmbarBVRDSourceCheck/1.0 (+https://github.com/rodriguezcaprettini/Ambar)"})
-TIMEOUT = 30
-SOURCES = [
-    "https://prod-data.bvrd.com.do/json/boletines.json",
-    "https://bvrd.com.do/inicio/",
-    "https://bvrd.com.do/",
+S.headers.update({"User-Agent": "AmbarBVRDSourceCheck/1.1 (+https://github.com/rodriguezcaprettini/Ambar)"})
+TIMEOUT = 25
+
+# Archivo histórico cuya URL pública está indexada por buscadores.
+KNOWN = [
+    "https://cdn.bvrd.com.do/wp-content/uploads/2023/12/05-12-2023-Boletin-BVRD-Consolidado-pdf-1-1.pdf",
 ]
-seen = set()
-excel_urls = set()
+DATES = [date(2026, 11, 27), date(2026, 11, 26)]
+CANDIDATES = []
+for d in DATES:
+    stem = f"{d:%d-%m-%Y}-Boletin-BVRD-Consolidado"
+    month = f"{d:%Y/%m}"
+    # Variantes de nombre/ruta de WordPress: solo sondas GET de archivos concretos.
+    for name in (f"{stem}-Excel.xlsx", f"{stem}-excel.xlsx",
+                 f"{stem}-excel-1.xlsx", f"{stem}-pdf.pdf"):
+        CANDIDATES.append(f"https://cdn.bvrd.com.do/wp-content/uploads/{month}/{name}")
+    # Ruta de descarga usada actualmente por el robot de Ámbar.
+    month_name = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto",
+                  "Septiembre","Octubre","Noviembre","Diciembre"][d.month-1]
+    CANDIDATES.append(
+        "https://prod-data.bvrd.com.do/documentos/boletines/"
+        f"BOLETINES+Y+PRECIOS+{d.year}/Boletin+Consolidado/"
+        f"{d.month}.+{month_name}/{d:%d-%m-%Y}-Boletin+BVRD+Consolidado+excel.xlsx"
+    )
 
-def report(url, response):
-    body = response.content
-    sig = "xlsx/zip" if body[:2] == b"PK" else "html" if b"<html" in body[:500].lower() else "other"
-    print(f"URL {url}\n  status={response.status_code} final={response.url}\n  type={response.headers.get('content-type')} bytes={len(body)} signature={sig}")
-
-for url in SOURCES:
+def check(url):
     try:
-        r = S.get(url, timeout=TIMEOUT)
-        report(url, r)
-        seen.add(r.url)
-        if r.ok:
-            text = r.text
-            # JSON may contain absolute or relative document links.
-            for raw in re.findall(r'https?[^\\"\'<> ]+|(?:[^\\"\'<> ]+\.xlsx(?:\?[^\\"\'<> ]*)?)', text, re.I):
-                candidate = urljoin(r.url, raw.replace("\\/", "/"))
-                if ".xlsx" in candidate.lower():
-                    excel_urls.add(candidate)
-            # Public-page anchors: keep links whose href or label mentions Excel/boletín.
-            if "html" in r.headers.get("content-type", "").lower():
-                for href, label in re.findall(r'<a[^>]+href=["\']([^"\']+)["\'][^>]*>(.*?)</a>', text, re.I | re.S):
-                    combined = re.sub(r"<[^>]+>", " ", label)
-                    if "excel" in (href + " " + combined).lower() or "boletin" in (href + " " + combined).lower():
-                        candidate = urljoin(r.url, href)
-                        if candidate.startswith("http"):
-                            excel_urls.add(candidate)
-    except Exception as e:
-        print(f"URL {url}\n  ERROR {type(e).__name__}: {e}")
-
-print(f"\nCANDIDATE_LINKS {len(excel_urls)}")
-for url in sorted(excel_urls):
-    try:
-        # Avoid downloading large files during discovery; GET with streaming and inspect headers.
         r = S.get(url, timeout=TIMEOUT, stream=True, allow_redirects=True)
-        chunk = next(r.iter_content(4), b"")
-        print(f"LINK {url}\n  status={r.status_code} final={r.url}\n  type={r.headers.get('content-type')} signature={'xlsx/zip' if chunk[:2] == b'PK' else chunk[:16]!r}")
+        first = next(r.iter_content(16), b"")
+        sig = ("xlsx/zip" if first[:2] == b"PK" else
+               "pdf" if first.startswith(b"%PDF") else
+               "html" if b"<html" in first.lower() else repr(first[:12]))
+        print(f"{url}\n  status={r.status_code} final={r.url}\n"
+              f"  type={r.headers.get('content-type')} length={r.headers.get('content-length')} signature={sig}")
         r.close()
     except Exception as e:
-        print(f"LINK {url}\n  ERROR {type(e).__name__}: {e}")
+        print(f"{url}\n  ERROR {type(e).__name__}: {e}")
 
-if not excel_urls:
-    print("\nRESULT: no se descubrieron enlaces Excel desde estas fuentes.")
+for u in KNOWN + CANDIDATES:
+    check(u)
