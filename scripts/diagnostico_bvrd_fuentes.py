@@ -221,3 +221,23 @@ for route, params in PARAM_TESTS:
         resp.close()
     except Exception as exc:
         print("API_PARAM_ERROR", route, type(exc).__name__, str(exc)[:180])
+
+
+print("=== COBERTURA TEMPORAL Y UNIVERSO DE INSTRUMENTOS ===")
+for ticker in ("AOCISA", "APPRO", "VF1RIC01"):
+    for start in ("2026-11-26", "2026-10-01", "2025-01-01"):
+        for route in ("/precios_diarios_db", "/operaciones_totales"):
+            try:
+                resp=S.get(API_BASE+route,params={"titulo_id":ticker,"desde":start},timeout=TIMEOUT,headers={"Accept":"application/json"})
+                try:
+                    data=resp.json() if resp.status_code==200 else None
+                except Exception:
+                    data=None
+                count=len(data) if isinstance(data,list) else None
+                dates=sorted({str(row.get("fecha_operacion") or row.get("fecha_hora_operacion",""))[:10] for row in data}) if isinstance(data,list) else []
+                print(f"API_COVERAGE ticker={ticker} route={route} desde={start} status={resp.status_code} count={count} first={dates[0] if dates else None} last={dates[-1] if dates else None}")
+                if start=="2026-11-26" and ticker=="AOCISA" and isinstance(data,list):
+                    print("API_RECOVERY_SAMPLE",route,brief_json(data,2200))
+                resp.close()
+            except Exception as exc:
+                print("API_COVERAGE_ERROR",ticker,route,start,type(exc).__name__,str(exc)[:140])
