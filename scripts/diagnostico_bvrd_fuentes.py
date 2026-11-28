@@ -138,3 +138,57 @@ for u in PAGES:
 print("=== KNOWN/HISTORICAL AND MISSING DATES (prior CDN probe retained for comparison) ===")
 for u in KNOWN + CANDIDATES:
     check(u)
+
+
+print("=== PRUEBA API PUBLICA DEL DASHBOARD BVRD ===")
+API_BASE = "https://dashboard.bvrd.exchange/apis/dashboard_emisores"
+API_ROUTES = [
+    "/dashboard_home",
+    "/ultimos_precios",
+    "/fecha_validate",
+    "/precios_diarios_db",
+    "/operaciones_totales",
+    "/precio_ops_dia",
+    "/variaciones_precio",
+    "/ranking_bvrd_db",
+    "/monitoreo_navs_db",
+    "/variaciones_navs_db",
+]
+def brief_json(value, limit=1800):
+    import json
+    try:
+        raw = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    except Exception:
+        raw = str(value)
+    return raw[:limit].replace("\\n", " ")
+
+for route in API_ROUTES:
+    url = API_BASE + route
+    try:
+        resp = S.get(url, timeout=TIMEOUT, headers={"Accept": "application/json"})
+        ctype = resp.headers.get("content-type", "")
+        print(f"API_PROBE {route} status={resp.status_code} type={ctype} bytes={len(resp.content)}")
+        if resp.status_code == 200 and "json" in ctype.lower():
+            try:
+                data = resp.json()
+                print("API_DATA", route, brief_json(data))
+                if route == "/dashboard_home":
+                    def walk(obj, depth=0):
+                        if depth > 4:
+                            return
+                        if isinstance(obj, dict):
+                            for k, v in obj.items():
+                                if any(x in k.lower() for x in ("titulo", "instrument", "id", "emis")):
+                                    print("API_ID_CANDIDATE", k, brief_json(v, 500))
+                                walk(v, depth+1)
+                        elif isinstance(obj, list):
+                            for item in obj[:20]:
+                                walk(item, depth+1)
+                    walk(data)
+            except Exception as exc:
+                print("API_JSON_ERROR", route, type(exc).__name__, str(exc)[:180], resp.text[:300])
+        else:
+            print("API_BODY", route, resp.text[:500].replace("\\n", " "))
+        resp.close()
+    except Exception as exc:
+        print("API_ERROR", route, type(exc).__name__, str(exc)[:200])
