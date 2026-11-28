@@ -241,3 +241,50 @@ for ticker in ("AOCISA", "APPRO", "VF1RIC01"):
                 resp.close()
             except Exception as exc:
                 print("API_COVERAGE_ERROR",ticker,route,start,type(exc).__name__,str(exc)[:140])
+
+
+print("=== SIMV DEEPBLUE: FORMATOS Y SERIES ABIERTAS ===")
+# Endpoints publicados por SIMV/datos.gov.do. Se prueban formatos sin
+# modificar parámetros ni intentar superar controles de acceso.
+SIMV_REPORTS = {
+    "colocacion_rf": "cleancolocacion-rf",
+    "colocacion_rv": "cleancolocacion-rv",
+    "liquidacion": "cleanliquidacion",
+    "custodia": "cleancustodia",
+    "custodia_persona": "cleancustodia-persona",
+    "custodia_emisor": "cleancustodia-emisor",
+    "custodia_instrumento": "cleancustodia-instrumento",
+    "instrumentos_custodia": "cleaninstrumentos-custodia",
+    "dividendos": "cleandividendos",
+    "valor_cuota": "cleanvariacion-valor-cuota",
+    "balance_intermediarios": "cleanbalance-consolidado",
+    "participantes_rmv": "cleanparticipantes-rmv",
+}
+for label, slug in SIMV_REPORTS.items():
+    for fmt in ("csv", "xlsx", "ods"):
+        url = f"https://deepblue.simv.gob.do/api/reports/{slug}?fileType={fmt}"
+        try:
+            resp = S.get(url, timeout=TIMEOUT, headers={"Accept": "*/*"})
+            raw = resp.content
+            head = raw[:32]
+            signature = ("ZIP/XLSX/ODS" if head.startswith(b"PK") else
+                         "OLE/XLS" if head.startswith(bytes.fromhex("D0CF11E0A1B11AE1")) else
+                         "CSV/TEXT" if raw[:512].decode("utf-8-sig", "ignore").strip() and b"<html" not in raw[:512].lower() else
+                         "HTML" if b"<html" in raw[:512].lower() else repr(head[:16]))
+            print(f"SIMV_FILE label={label} format={fmt} status={resp.status_code} "
+                  f"type={resp.headers.get('content-type')} disposition={resp.headers.get('content-disposition')} "
+                  f"bytes={len(raw)} signature={signature} sample={repr(raw[:180])}")
+            resp.close()
+        except Exception as exc:
+            print("SIMV_FILE_ERROR", label, fmt, type(exc).__name__, str(exc)[:180])
+
+print("=== SIMV DATA PORTAL DATASET METADATA / SOURCE URLS ===")
+DATASET_PAGES = [
+    "https://datos.gov.do/dataset/mercado-primario-de-renta-fija-en-rd-2013-2025",
+    "https://datos.gov.do/dataset/mercado-primario-de-renta-variable-en-rd-2013-2025",
+    "https://datos.gov.do/dataset/liquidacion-de-valores-2013-2025",
+    "https://datos.gov.do/dataset/variacion-del-valor-cuota-de-los-instrumentos-de-renta-variable",
+    "https://datos.gov.do/organization/superintendencia-de-valores-de-la-republica-dominicana-siv",
+]
+for page in DATASET_PAGES:
+    check(page, show_links=True)
