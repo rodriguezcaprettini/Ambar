@@ -43,6 +43,15 @@ DISCOVERY = [
     "https://indices.bvrd.com.do/",
     "https://operaciones.bvrd.com.do/",
 ]
+# Aplicaciones públicas que pueden cargar datos desde JavaScript.
+APP_PAGES = [
+    "https://indices.bvrd.com.do/",
+]
+SIMV_PAGES = [
+    "https://simv.gob.do/estadisticas-reportes-y-estudios/",
+    "https://simv.gob.do/datos-publicados-en-formatos-abiertos-csv-ods-xls/",
+]
+
 PAGES = [
     "https://bvrd.com.do/horarios-de-negociacion/",
     "https://bvrd.com.do/nuestros-emisores/",
@@ -80,6 +89,31 @@ def check(url, show_links=False):
 print("=== DISCOVERY ENDPOINTS ===")
 for u in DISCOVERY:
     check(u, show_links=True)
+print("=== PUBLIC APP / DATA DISCOVERY ===")
+for u in APP_PAGES + SIMV_PAGES:
+    check(u, show_links=True)
+    try:
+        r = S.get(u, timeout=TIMEOUT)
+        if r.status_code == 200:
+            html = r.text[:3_000_000]
+            scripts = re.findall(r'<script[^>]+src=["\\']([^"\\']+)', html, re.I)
+            for src in scripts[:30]:
+                asset = urljoin(r.url, src)
+                print("  SCRIPT", asset)
+                try:
+                    js = S.get(asset, timeout=TIMEOUT)
+                    if js.status_code == 200:
+                        patterns = re.findall(
+                            r'''(?:https?://[^"\\'\\s<>]+|["\\']/(?:api|graphql|data|wp-json)/[^"\\']+)''',
+                            js.text, re.I)
+                        for endpoint in patterns[:30]:
+                            print("  JS_ENDPOINT", endpoint[:500])
+                except Exception as e:
+                    print("  SCRIPT_ERROR", type(e).__name__, str(e)[:180])
+        r.close()
+    except Exception as e:
+        print("  PAGE_ERROR", type(e).__name__, str(e)[:180])
+
 print("=== PUBLIC PAGES ===")
 for u in PAGES:
     check(u, show_links=True)
