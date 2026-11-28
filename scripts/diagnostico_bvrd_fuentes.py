@@ -46,6 +46,7 @@ DISCOVERY = [
 # Aplicaciones públicas que pueden cargar datos desde JavaScript.
 APP_PAGES = [
     "https://indices.bvrd.com.do/",
+    "https://dashboard.bvrd.exchange/",
 ]
 SIMV_PAGES = [
     "https://simv.gob.do/estadisticas-reportes-y-estudios/",
@@ -60,8 +61,8 @@ PAGES = [
 
 def check(url, show_links=False):
     try:
-        r = S.get(url, timeout=TIMEOUT, stream=True, allow_redirects=True)
-        first = next(r.iter_content(256), b"")
+        r = S.get(url, timeout=TIMEOUT, allow_redirects=True)
+        first = r.content[:256]
         sig = ("xlsx/zip" if first[:2] == b"PK" else
                "pdf" if first.startswith(b"%PDF") else
                "json" if "json" in (r.headers.get("content-type") or "").lower() or first.lstrip().startswith((b"{", b"[")) else
@@ -70,14 +71,14 @@ def check(url, show_links=False):
         print(f"{url}\n  status={r.status_code} final={r.url}\n"
               f"  type={r.headers.get('content-type')} length={r.headers.get('content-length')} signature={sig}")
         if show_links and r.status_code == 200 and "html" in (r.headers.get("content-type") or "").lower():
-            body = first + r.raw.read(2_000_000)
+            body = r.content[:2_000_000]
             text = body.decode("utf-8", "ignore")
             links = re.findall(r'''(?:href|src)=["']([^"']+)["']''', text, re.I)
             hits = [urljoin(r.url, x) for x in links if re.search(r"bolet|excel|\.xlsx|\.pdf", x, re.I)]
             for link in hits[:40]:
                 print("  BULLETIN_LINK", link)
         elif show_links and r.status_code == 200 and sig == "json":
-            body = first + r.raw.read(2_000_000)
+            body = r.content[:2_000_000]
             text = body.decode("utf-8", "ignore")
             hits = re.findall(r'https?://[^"\\s<>]+', text)
             for link in [x for x in hits if re.search(r"bolet|excel|\.xlsx|\.pdf", x, re.I)][:40]:
@@ -104,7 +105,7 @@ for u in APP_PAGES + SIMV_PAGES:
                     js = S.get(asset, timeout=TIMEOUT)
                     if js.status_code == 200:
                         print("  JS_LENGTH", len(js.text))
-                        for match in re.finditer(r'prod-data\\.bvrd\\.com\\.do', js.text, re.I):
+                        for match in re.finditer(r'prod-data', js.text, re.I):
                             print("  PRODDATA_CONTEXT", js.text[max(0, match.start()-350):match.end()+700].replace("\\n", " ")[:1100])
                         patterns = re.findall(
                             r'''(?:https?://[^"\\'\\s<>]+|["\\']/(?:api|graphql|data|wp-json)/[^"\\']+)''',
