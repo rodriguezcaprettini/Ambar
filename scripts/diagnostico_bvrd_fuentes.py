@@ -103,11 +103,14 @@ for u in APP_PAGES + SIMV_PAGES:
                 try:
                     js = S.get(asset, timeout=TIMEOUT)
                     if js.status_code == 200:
+                        print("  JS_LENGTH", len(js.text))
+                        for match in re.finditer(r'prod-data\\.bvrd\\.com\\.do', js.text, re.I):
+                            print("  PRODDATA_CONTEXT", js.text[max(0, match.start()-350):match.end()+700].replace("\\n", " ")[:1100])
                         patterns = re.findall(
                             r'''(?:https?://[^"\\'\\s<>]+|["\\']/(?:api|graphql|data|wp-json)/[^"\\']+)''',
                             js.text, re.I)
                         for endpoint in patterns[:30]:
-                            print("  JS_ENDPOINT", endpoint[:500])
+                            print("  JS_ENDPOINT", endpoint[:1000])
                 except Exception as e:
                     print("  SCRIPT_ERROR", type(e).__name__, str(e)[:180])
         r.close()
