@@ -107,6 +107,20 @@ for u in APP_PAGES + SIMV_PAGES:
                         print("  JS_LENGTH", len(js.text))
                         for match in re.finditer(r'prod-data', js.text, re.I):
                             print("  PRODDATA_CONTEXT", js.text[max(0, match.start()-350):match.end()+700].replace("\\n", " ")[:1100])
+                        # Extrae rutas/API de bundles SPA sin limitarse a URLs absolutas.
+                        if "dashboard.bvrd.exchange" in asset:
+                            for kw in ("axios.create", "baseURL", "fetch(", "graphql",
+                                       "api/", "/api", "operaciones", "emisores",
+                                       "instrumentos", "acciones", "renta", "precios",
+                                       "hechos", "ultim", "dashboard"):
+                                starts = [m.start() for m in re.finditer(re.escape(kw), js.text, re.I)]
+                                for pos in starts[:12]:
+                                    print("  DASH_CONTEXT", kw, js.text[max(0,pos-260):pos+520].replace("\\n"," ")[:800])
+                            patterns = re.findall(
+                                r'''(?:https?://[^"\\'\\s<>]+|["\\']/(?:api|graphql|data|v[0-9]+|dashboard|operaciones|emisores|instrumentos|acciones|renta|precios)[^"\\']*)''',
+                                js.text, re.I)
+                            for endpoint in sorted(set(patterns))[:160]:
+                                print("  DASH_ENDPOINT", endpoint[:500])
                         patterns = re.findall(
                             r'''(?:https?://[^"\\'\\s<>]+|["\\']/(?:api|graphql|data|wp-json)/[^"\\']+)''',
                             js.text, re.I)
